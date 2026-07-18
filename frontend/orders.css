@@ -1,0 +1,536 @@
+/* ── Orders Panel Overlay ──────────────────────────────────── */
+#orders-panel-overlay,
+#till-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  background: #f1f5f9;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.op-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 60px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  gap: 16px;
+}
+
+.op-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.op-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.op-tabs {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.orders-tab-btn {
+  padding: 6px 20px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.orders-tab-btn.active {
+  background: #fff;
+  color: #1e293b;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+.op-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.op-refresh-btn {
+  padding: 7px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.op-refresh-btn:hover { background: #f8fafc; }
+
+.op-close-btn {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 7px;
+  background: #1e293b;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.op-close-btn:hover { background: #334155; }
+
+/* ── Tab content ────────────────────────────────────────────── */
+.op-tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* ── Order cards grid ───────────────────────────────────────── */
+.op-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  align-content: start;
+}
+
+.op-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* ── Card base ──────────────────────────────────────────────── */
+.op-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Card header ────────────────────────────────────────────── */
+.op-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  gap: 10px;
+}
+
+.op-order-num {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.op-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+/* Type badges */
+.op-type-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.op-type-carry_out  { background: #dcfce7; color: #166534; }
+.op-type-dine_in    { background: #ede9fe; color: #5b21b6; }
+.op-type-delivery   { background: #dbeafe; color: #1e40af; }
+
+/* Status badges */
+.op-status-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.op-s-received  { background: #fef9c3; color: #713f12; }
+.op-s-prepping  { background: #dbeafe; color: #1e40af; }
+.op-s-baking    { background: #ffedd5; color: #9a3412; }
+.op-s-ready     { background: #dcfce7; color: #166534; }
+.op-s-paid      { background: #dcfce7; color: #166534; }
+.op-s-refunded  { background: #fee2e2; color: #991b1b; }
+.op-s-cancelled { background: #f1f5f9; color: #64748b; }
+
+.op-time {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.op-customer {
+  font-size: 0.8rem;
+  color: #475569;
+  text-align: right;
+}
+
+/* ── Items ──────────────────────────────────────────────────── */
+.op-items {
+  padding: 0 16px 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.op-item-line {
+  font-size: 0.875rem;
+  color: #334155;
+  padding: 3px 0;
+  line-height: 1.4;
+}
+
+.op-note {
+  padding: 6px 16px;
+  font-size: 0.8rem;
+  color: #b45309;
+  background: #fffbeb;
+  border-bottom: 1px solid #fef3c7;
+}
+
+/* ── Card footer ────────────────────────────────────────────── */
+.op-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  gap: 10px;
+}
+
+.op-total {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+/* Advance status buttons */
+.op-btn-advance {
+  flex: 1;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: #fff;
+  max-width: 200px;
+}
+.op-btn-advance:disabled { opacity: 0.5; cursor: default; }
+
+.op-adv-received { background: #f59e0b; }
+.op-adv-received:hover:not(:disabled) { background: #d97706; }
+
+.op-adv-prepping { background: #3b82f6; }
+.op-adv-prepping:hover:not(:disabled) { background: #2563eb; }
+
+.op-adv-baking { background: #f97316; }
+.op-adv-baking:hover:not(:disabled) { background: #ea580c; }
+
+.op-adv-ready { background: #94a3b8; }
+
+/* Collect payment button */
+.op-btn-collect {
+  flex: 1;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  max-width: 200px;
+}
+.op-btn-collect:hover { background: #15803d; }
+
+/* ── Scheduled card extras ───────────────────────────────────── */
+.op-sched-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #1e293b, #334155);
+  color: #fff;
+}
+
+.op-sched-day {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+}
+
+.op-sched-clock {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.op-placed-label {
+  font-size: 0.73rem;
+  color: #94a3b8;
+}
+
+/* Start now button */
+.op-btn-start {
+  flex: 1;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  max-width: 200px;
+}
+.op-btn-start:hover { background: #1d4ed8; }
+.op-btn-start:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Reprint / Refund buttons ────────────────────────────────── */
+.op-btn-reprint {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.op-btn-reprint:hover:not(:disabled) { background: #f8fafc; }
+.op-btn-reprint:disabled { opacity: 0.6; cursor: default; }
+
+.op-btn-refund {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 7px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.op-btn-refund:hover { background: #fecaca; }
+
+/* ── Refund overlay ──────────────────────────────────────────── */
+#op-refund-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 850;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Payment overlay ─────────────────────────────────────────── */
+#op-pay-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 850;
+  background: rgba(0, 0, 0, 0.55);
+  align-items: center;
+  justify-content: center;
+}
+
+.op-pay-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 28px 24px;
+  width: 340px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+
+.op-pay-modal h3 {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+  color: #1e293b;
+}
+
+.op-pay-info {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.op-pay-total {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #1e293b;
+  margin: 10px 0 20px;
+}
+
+.op-pay-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.op-pay-btn {
+  flex: 1;
+  padding: 13px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: #fff;
+}
+.op-pay-btn.cash { background: #16a34a; }
+.op-pay-btn.cash:hover { background: #15803d; }
+.op-pay-btn.card { background: #2563eb; }
+.op-pay-btn.card:hover { background: #1d4ed8; }
+
+.op-pay-cancel {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.85rem;
+  color: #64748b;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: background 0.15s;
+}
+.op-pay-cancel:hover { background: #f8fafc; }
+
+/* ── Cash Management ────────────────────────────────────────── */
+.cash-summary-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.cash-expected-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.cash-expected-amount {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+
+.cash-last-count { font-size: 0.83rem; color: #475569; }
+.cash-variance-ok  { color: #16a34a; font-weight: 700; }
+.cash-variance-bad { color: #dc2626; font-weight: 700; }
+
+.cash-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.cash-action-btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 14px 10px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cash-action-btn.in    { background: #dcfce7; color: #15803d; }
+.cash-action-btn.in:hover    { background: #bbf7d0; }
+.cash-action-btn.out   { background: #fee2e2; color: #991b1b; }
+.cash-action-btn.out:hover   { background: #fecaca; }
+.cash-action-btn.count { background: #dbeafe; color: #1e40af; }
+.cash-action-btn.count:hover { background: #bfdbfe; }
+
+.cash-mv-in    { background: #dcfce7; color: #166534; }
+.cash-mv-out   { background: #fee2e2; color: #991b1b; }
+.cash-mv-count { background: #dbeafe; color: #1e40af; }
+
+/* ── Cash overlay inputs ─────────────────────────────────────── */
+.cash-input-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.cash-input {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #1e293b;
+  box-sizing: border-box;
+  margin-bottom: 4px;
+}
+.cash-input:focus { outline: none; border-color: #3b82f6; background: #fff; }
+
+/* ── Cash action overlays ────────────────────────────────────── */
+#op-cashin-overlay,
+#op-cashout-overlay,
+#op-count-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 860;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .op-title { display: none; }
+  .op-tab-content { padding: 12px; }
+  .op-board { grid-template-columns: 1fr; gap: 12px; }
+}

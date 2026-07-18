@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rustic Pizza — Owner Panel</title>
+  <link rel="stylesheet" href="owner.css">
+</head>
+<body>
+
+  <!-- ── PIN Login Screen ──────────────────────────────────── -->
+  <div class="pin-screen" id="pin-screen">
+    <div class="pin-card">
+      <div class="pin-logo">🍕</div>
+      <h1 class="pin-title">Owner Panel</h1>
+      <p class="pin-sub">Rustic Pizza · Sherborn MA</p>
+      <div class="pin-dots" id="pin-dots">
+        <span class="dot" id="d0"></span>
+        <span class="dot" id="d1"></span>
+        <span class="dot" id="d2"></span>
+        <span class="dot" id="d3"></span>
+      </div>
+      <div class="pin-error" id="pin-error"></div>
+      <div class="pin-pad">
+        <button class="pin-key" onclick="pinKey('1')">1</button>
+        <button class="pin-key" onclick="pinKey('2')">2</button>
+        <button class="pin-key" onclick="pinKey('3')">3</button>
+        <button class="pin-key" onclick="pinKey('4')">4</button>
+        <button class="pin-key" onclick="pinKey('5')">5</button>
+        <button class="pin-key" onclick="pinKey('6')">6</button>
+        <button class="pin-key" onclick="pinKey('7')">7</button>
+        <button class="pin-key" onclick="pinKey('8')">8</button>
+        <button class="pin-key" onclick="pinKey('9')">9</button>
+        <button class="pin-key pin-clear" onclick="pinClear()">Clear</button>
+        <button class="pin-key" onclick="pinKey('0')">0</button>
+        <button class="pin-key pin-del" onclick="pinBack()">&#9003;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Management Screen ─────────────────────────────────── -->
+  <div class="owner-screen" id="owner-screen" style="display:none">
+
+    <!-- Header -->
+    <header class="owner-header">
+      <div class="owner-logo">
+        <span>🍕</span>
+        <span>Rustic Pizza — Owner Panel</span>
+      </div>
+      <div class="header-actions">
+        <span class="item-count" id="item-count"></span>
+        <button class="btn-new-item" onclick="openNewItem()">+ New Item</button>
+        <button class="btn-logout" onclick="logout()">Lock</button>
+      </div>
+    </header>
+
+    <!-- Category filter tabs -->
+    <nav class="cat-tabs" id="cat-tabs">
+      <button class="cat-tab active" data-cat="all">All</button>
+      <button class="cat-tab" data-cat="pizza">Pizza</button>
+      <button class="cat-tab" data-cat="gourmet_pizza">Gourmet</button>
+      <button class="cat-tab" data-cat="calzone">Calzones</button>
+      <button class="cat-tab" data-cat="sub_wrap">Subs &amp; Wraps</button>
+      <button class="cat-tab" data-cat="appetizer">Appetizers</button>
+      <button class="cat-tab" data-cat="dinner_plate">Dinner Plates</button>
+      <button class="cat-tab" data-cat="salad">Salads</button>
+      <button class="cat-tab" data-cat="dessert">Desserts</button>
+      <button class="cat-tab" data-cat="beverage">Beverages</button>
+    </nav>
+
+    <!-- Search bar -->
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="Search items..." oninput="filterItems()" autocomplete="off" />
+    </div>
+
+    <!-- Items table -->
+    <div class="items-container">
+      <div class="loading-msg" id="loading-msg">Loading menu items...</div>
+      <table class="items-table" id="items-table" style="display:none">
+        <thead>
+          <tr>
+            <th class="col-photo">Photo</th>
+            <th class="col-name">Item</th>
+            <th class="col-cat">Category</th>
+            <th class="col-price">Small</th>
+            <th class="col-price">Large</th>
+            <th class="col-status">Status</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="items-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Edit Item Modal ────────────────────────────────────── -->
+  <div class="owner-overlay" id="edit-overlay" style="display:none">
+    <div class="edit-modal">
+      <button class="modal-close" onclick="closeEdit()">&#x2715;</button>
+      <h2 id="edit-title">Edit Item</h2>
+      <div class="edit-section-label">Prices</div>
+      <div class="edit-row">
+        <div class="edit-field">
+          <label>Small / Single ($)</label>
+          <input type="number" id="edit-small" placeholder="e.g. 12.50" step="0.01" min="0" />
+        </div>
+        <div class="edit-field">
+          <label>Large ($)</label>
+          <input type="number" id="edit-large" placeholder="e.g. 16.00" step="0.01" min="0" />
+        </div>
+      </div>
+      <div class="edit-section-label" style="margin-top:20px">Photo URL</div>
+      <div class="edit-field">
+        <input type="url" id="edit-image" placeholder="https://..." autocomplete="off" />
+      </div>
+      <div class="edit-preview-wrap" id="edit-preview-wrap" style="display:none">
+        <img id="edit-preview-img" src="" alt="Preview" class="edit-preview-img" />
+      </div>
+      <div class="edit-footer">
+        <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
+        <button class="btn-save" onclick="saveEdit()">Save Changes</button>
+      </div>
+      <div class="edit-status" id="edit-status"></div>
+    </div>
+  </div>
+
+  <!-- ── New Item Modal ────────────────────────────────────── -->
+  <div class="owner-overlay" id="new-item-overlay" style="display:none">
+    <div class="edit-modal">
+      <button class="modal-close" onclick="closeNewItem()">&#x2715;</button>
+      <h2>Add New Item</h2>
+
+      <div class="edit-row">
+        <div class="edit-field" style="grid-column:1/-1">
+          <label>Item Name *</label>
+          <input type="text" id="ni-name" placeholder="e.g. BBQ Chicken Pizza" autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="edit-row" style="margin-top:12px">
+        <div class="edit-field">
+          <label>Category *</label>
+          <select id="ni-category">
+            <option value="">— Select —</option>
+            <option value="pizza">Pizza</option>
+            <option value="gourmet_pizza">Gourmet Pizza</option>
+            <option value="calzone">Calzone</option>
+            <option value="sub_wrap">Sub / Wrap</option>
+            <option value="appetizer">Appetizer</option>
+            <option value="dinner_plate">Dinner Plate</option>
+            <option value="salad">Salad</option>
+            <option value="dessert">Dessert</option>
+            <option value="beverage">Beverage</option>
+          </select>
+        </div>
+        <div class="edit-field">
+          <label>Description</label>
+          <input type="text" id="ni-description" placeholder="Optional" autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="edit-section-label" style="margin-top:16px">Prices</div>
+      <div class="edit-row">
+        <div class="edit-field">
+          <label>Small / Single ($)</label>
+          <input type="number" id="ni-small" placeholder="e.g. 12.50" step="0.01" min="0" />
+        </div>
+        <div class="edit-field">
+          <label>Large ($)</label>
+          <input type="number" id="ni-large" placeholder="e.g. 16.00" step="0.01" min="0" />
+        </div>
+      </div>
+
+      <div class="edit-section-label" style="margin-top:16px">Photo URL</div>
+      <div class="edit-field">
+        <input type="url" id="ni-image" placeholder="https://..." autocomplete="off" />
+      </div>
+      <div class="edit-preview-wrap" id="ni-preview-wrap" style="display:none">
+        <img id="ni-preview-img" src="" alt="Preview" class="edit-preview-img" />
+      </div>
+
+      <div class="edit-footer">
+        <button class="btn-cancel" onclick="closeNewItem()">Cancel</button>
+        <button class="btn-save" onclick="saveNewItem()">Add Item</button>
+      </div>
+      <div class="edit-status" id="ni-status"></div>
+    </div>
+  </div>
+
+  <script src="owner.js"></script>
+</body>
+</html>

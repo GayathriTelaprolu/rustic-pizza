@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Rustic Pizza POS</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="owner.css">
+  <link rel="stylesheet" href="orders.css">
+</head>
+<body>
+
+  <!-- ── Main Layout ──────────────────────────────────────────── -->
+  <div class="pos-layout">
+
+    <!-- Category Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🍕</span>
+        <span class="logo-text">Rustic Pizza</span>
+      </div>
+      <div class="cat-list">
+        <button class="cat-btn" data-cat="pizza">Pizza</button>
+        <button class="cat-btn" data-cat="gourmet_pizza">Gourmet Pizza</button>
+        <button class="cat-btn" data-cat="calzone">Calzones</button>
+        <button class="cat-btn" data-cat="sub_wrap">Subs &amp; Wraps</button>
+        <button class="cat-btn" data-cat="appetizer">Appetizers</button>
+        <button class="cat-btn" data-cat="dinner_plate">Dinner Plates</button>
+        <button class="cat-btn" data-cat="salad">Salads</button>
+        <button class="cat-btn" data-cat="dessert">Desserts</button>
+        <button class="cat-btn" data-cat="beverage">Beverages</button>
+        <button class="cat-btn" data-cat="slice">🍕 Slices</button>
+        <button class="cat-btn" data-cat="custom">＋ Custom Item</button>
+      </div>
+      <button id="btn-orders-panel" class="btn-orders-panel" onclick="openOrdersPanel()">📋 Orders</button>
+      <button class="btn-till-panel" onclick="openTillPanel()">🪙 Till</button>
+      <button class="btn-owner-panel" onclick="openOwnerPanel()">⚙ Owner</button>
+    </nav>
+
+    <!-- Menu Items Panel -->
+    <main class="menu-panel">
+      <div class="panel-header">
+        <h1 id="panel-title">Pizza</h1>
+      </div>
+      <div class="items-grid" id="items-grid">
+        <p class="loading-msg">Loading menu…</p>
+      </div>
+    </main>
+
+    <!-- Cart Panel -->
+    <aside class="cart-panel">
+      <div class="cart-header">
+        <h2>Current Order</h2>
+        <div class="order-type-tabs">
+          <button class="type-tab active" data-type="carry_out">Carry Out</button>
+          <button class="type-tab" data-type="dine_in">Dine In</button>
+          <button class="type-tab" data-type="delivery">Delivery</button>
+        </div>
+      </div>
+
+      <!-- Carry-out customer info (shown when Carry Out tab is active) -->
+      <div class="carryout-info" id="carryout-info">
+        <div class="del-info-label">Customer Name (optional)</div>
+        <input class="del-field" id="co-name" type="text" placeholder="Name for pickup" autocomplete="off" />
+        <input class="del-field" id="co-phone" type="tel" placeholder="Phone (optional)" autocomplete="off" />
+      </div>
+
+      <!-- Delivery customer info (shown when Delivery tab is active) -->
+      <div class="delivery-info" id="delivery-info" style="display:none">
+        <div class="del-info-label">Customer Info</div>
+        <input class="del-field" id="del-name" type="text" placeholder="Customer Name *" autocomplete="off" />
+        <input class="del-field" id="del-phone" type="tel" placeholder="Phone Number *" autocomplete="off" />
+        <textarea class="del-field" id="del-notes" placeholder="Address / Delivery Notes" rows="2"></textarea>
+      </div>
+
+      <div class="cart-items" id="cart-items">
+        <div class="cart-empty">No items added yet</div>
+      </div>
+
+      <div class="cart-footer">
+        <div class="totals">
+          <div class="total-row"><span>Subtotal</span><span id="display-subtotal">$0.00</span></div>
+          <div class="total-row"><span>Tax (6.25%)</span><span id="display-tax">$0.00</span></div>
+          <div class="total-row grand-total"><span>TOTAL</span><span id="display-total">$0.00</span></div>
+        </div>
+        <div class="schedule-section">
+          <button id="btn-schedule-toggle" class="btn-schedule-toggle" onclick="toggleSchedule()">⏰ Schedule for later</button>
+          <div id="schedule-fields" class="schedule-fields" style="display:none">
+            <input type="datetime-local" id="schedule-dt" class="schedule-dt-input" />
+            <button class="btn-clear-sched" onclick="clearSchedule()">✕</button>
+          </div>
+        </div>
+        <div class="cart-actions">
+          <button class="btn-clear" onclick="clearCart()">Clear</button>
+          <button class="btn-order" id="btn-order" onclick="placeOrder()">Place Order</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ── Customizer Modal ──────────────────────────────────────── -->
+  <div class="overlay" id="overlay">
+    <div class="modal" id="modal">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ── Order Confirmed Modal ─────────────────────────────────── -->
+  <div class="overlay" id="confirm-overlay" style="display:none">
+    <div class="modal confirm-modal">
+      <h2>Order Placed!</h2>
+      <div class="order-num">#<span id="conf-order-id"></span></div>
+      <div id="conf-delivery-info" class="conf-delivery-info" style="display:none"></div>
+      <div class="order-total-conf">Total: <strong id="conf-total"></strong></div>
+
+      <!-- Dine-in payment -->
+      <div class="payment-options" id="payment-std">
+        <button class="btn-cash-pay" onclick="recordCash()">💵 Cash</button>
+        <button class="btn-card-pay" onclick="chargeCard()">💳 Card (Square)</button>
+      </div>
+
+      <!-- Carry-out payment: phone card OR pay now OR pay at pickup -->
+      <div id="payment-carry" style="display:none">
+        <button class="btn-card-phone" onclick="recordCardPhone()">📞 Card Over Phone (Pay Now)</button>
+        <div class="payment-options" style="margin-top:8px">
+          <button class="btn-cash-pay" onclick="recordCash()">💵 Cash (Pay Now)</button>
+          <button class="btn-card-pay" onclick="chargeCard()">💳 Card (Pay Now)</button>
+        </div>
+        <button class="btn-pay-later" onclick="payAtPickup()">🕐 Pay at Pickup</button>
+      </div>
+
+      <!-- Delivery payment: phone card OR cash at door -->
+      <div id="payment-del" style="display:none">
+        <button class="btn-card-phone" onclick="recordCardPhone()">📞 Card Over Phone (Pay Now)</button>
+        <div style="margin-top:8px">
+          <button class="btn-cash-del" style="width:100%;padding:14px" onclick="cashOnDelivery()">💵 Cash on Delivery</button>
+        </div>
+      </div>
+
+      <div id="test-payment-row" style="display:none; margin-top:8px">
+        <button class="btn-simulate" onclick="simulateCard()">🧪 Simulate Card (Test)</button>
+      </div>
+      <button class="btn-new-order" onclick="closeConfirm()">+ New Order</button>
+    </div>
+  </div>
+
+  <!-- ── Card Over Phone Entry Modal ──────────────────────────── -->
+  <div class="overlay" id="card-phone-overlay" style="display:none">
+    <div class="modal card-phone-modal">
+      <h2>Card Over Phone</h2>
+      <div class="modal-subtitle">Order #<span id="cp-order-id"></span> &nbsp;·&nbsp; <span id="cp-total"></span></div>
+
+      <div class="cp-field-group">
+        <label>Cardholder Name</label>
+        <input id="cp-name" type="text" placeholder="Name on card" autocomplete="off" />
+      </div>
+      <div class="cp-field-group">
+        <label>Card Number</label>
+        <input id="cp-number" type="text" placeholder="•••• •••• •••• ••••" maxlength="19" autocomplete="off" inputmode="numeric" />
+      </div>
+      <div class="cp-row">
+        <div class="cp-field-group">
+          <label>Expiry (MM/YY)</label>
+          <input id="cp-expiry" type="text" placeholder="MM/YY" maxlength="5" autocomplete="off" inputmode="numeric" />
+        </div>
+        <div class="cp-field-group">
+          <label>CVV</label>
+          <input id="cp-cvv" type="password" placeholder="•••" maxlength="4" autocomplete="off" inputmode="numeric" />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeCardPhone()">← Back</button>
+        <button class="btn-add" id="btn-process-card" onclick="processCardPhone()">💳 Process Payment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Owner Panel Overlay ──────────────────────────────────── -->
+  <div id="owner-panel-overlay" style="display:none; position:fixed; inset:0; z-index:900; overflow:auto; background:#f1f5f9;">
+
+    <!-- PIN screen -->
+    <div class="pin-screen" id="pin-screen">
+      <div class="pin-card">
+        <div class="pin-logo">🍕</div>
+        <h1 class="pin-title">Owner Panel</h1>
+        <p class="pin-sub">Rustic Pizza · Sherborn MA</p>
+        <div class="pin-dots" id="pin-dots">
+          <span class="dot" id="d0"></span>
+          <span class="dot" id="d1"></span>
+          <span class="dot" id="d2"></span>
+          <span class="dot" id="d3"></span>
+        </div>
+        <div class="pin-error" id="pin-error"></div>
+        <div class="pin-pad">
+          <button class="pin-key" onclick="pinKey('1')">1</button>
+          <button class="pin-key" onclick="pinKey('2')">2</button>
+          <button class="pin-key" onclick="pinKey('3')">3</button>
+          <button class="pin-key" onclick="pinKey('4')">4</button>
+          <button class="pin-key" onclick="pinKey('5')">5</button>
+          <button class="pin-key" onclick="pinKey('6')">6</button>
+          <button class="pin-key" onclick="pinKey('7')">7</button>
+          <button class="pin-key" onclick="pinKey('8')">8</button>
+          <button class="pin-key" onclick="pinKey('9')">9</button>
+          <button class="pin-key pin-clear" onclick="pinClear()">Clear</button>
+          <button class="pin-key" onclick="pinKey('0')">0</button>
+          <button class="pin-key pin-del" onclick="pinBack()">&#9003;</button>
+        </div>
+        <button class="btn-owner-back" onclick="closeOwnerPanel()">← Back to POS</button>
+      </div>
+    </div>
+
+    <!-- Management screen -->
+    <div class="owner-screen" id="owner-screen" style="display:none">
+      <header class="owner-header">
+        <div class="owner-logo"><span>🍕</span><span>Rustic Pizza — Owner Panel</span></div>
+        <div class="header-actions">
+          <span class="item-count" id="item-count"></span>
+          <button class="btn-new-item" onclick="openNewItem()">+ New Item</button>
+          <button class="btn-logout" onclick="logout()">← POS</button>
+        </div>
+      </header>
+
+      <nav class="cat-tabs" id="cat-tabs">
+        <button class="cat-tab active" data-cat="all">All</button>
+        <button class="cat-tab" data-cat="pizza">Pizza</button>
+        <button class="cat-tab" data-cat="gourmet_pizza">Gourmet</button>
+        <button class="cat-tab" data-cat="calzone">Calzones</button>
+        <button class="cat-tab" data-cat="sub_wrap">Subs &amp; Wraps</button>
+        <button class="cat-tab" data-cat="appetizer">Appetizers</button>
+        <button class="cat-tab" data-cat="dinner_plate">Dinner Plates</button>
+        <button class="cat-tab" data-cat="salad">Salads</button>
+        <button class="cat-tab" data-cat="dessert">Desserts</button>
+        <button class="cat-tab" data-cat="beverage">Beverages</button>
+      </nav>
+
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Search items..." oninput="filterItems()" autocomplete="off" />
+      </div>
+
+      <div class="items-container">
+        <div class="loading-msg" id="loading-msg">Loading menu items...</div>
+        <table class="items-table" id="items-table" style="display:none">
+          <thead>
+            <tr>
+              <th class="col-photo">Photo</th>
+              <th class="col-name">Item</th>
+              <th class="col-cat">Category</th>
+              <th class="col-price">Small</th>
+              <th class="col-price">Large</th>
+              <th class="col-status">Status</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Edit Item Modal (owner) ───────────────────────────────── -->
+  <div class="owner-overlay" id="edit-overlay" style="display:none; z-index:1000">
+    <div class="edit-modal">
+      <button class="modal-close" onclick="closeEdit()">&#x2715;</button>
+      <h2 id="edit-title">Edit Item</h2>
+      <div class="edit-section-label">Prices</div>
+      <div class="edit-row">
+        <div class="edit-field">
+          <label>Small / Single ($)</label>
+          <input type="number" id="edit-small" placeholder="e.g. 12.50" step="0.01" min="0" />
+        </div>
+        <div class="edit-field">
+          <label>Large ($)</label>
+          <input type="number" id="edit-large" placeholder="e.g. 16.00" step="0.01" min="0" />
+        </div>
+      </div>
+      <div class="edit-section-label" style="margin-top:20px">Photo URL</div>
+      <div class="edit-field">
+        <input type="url" id="edit-image" placeholder="https://..." autocomplete="off" />
+      </div>
+      <div class="edit-preview-wrap" id="edit-preview-wrap" style="display:none">
+        <img id="edit-preview-img" src="" alt="Preview" class="edit-preview-img" />
+      </div>
+      <div class="edit-footer">
+        <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
+        <button class="btn-save" onclick="saveEdit()">Save Changes</button>
+      </div>
+      <div class="edit-status" id="edit-status"></div>
+    </div>
+  </div>
+
+  <!-- ── New Item Modal (owner) ────────────────────────────────── -->
+  <div class="owner-overlay" id="new-item-overlay" style="display:none; z-index:1000">
+    <div class="edit-modal">
+      <button class="modal-close" onclick="closeNewItem()">&#x2715;</button>
+      <h2>Add New Item</h2>
+      <div class="edit-row">
+        <div class="edit-field" style="grid-column:1/-1">
+          <label>Item Name *</label>
+          <input type="text" id="ni-name" placeholder="e.g. BBQ Chicken Pizza" autocomplete="off" />
+        </div>
+      </div>
+      <div class="edit-row" style="margin-top:12px">
+        <div class="edit-field">
+          <label>Category *</label>
+          <select id="ni-category">
+            <option value="">— Select —</option>
+            <option value="pizza">Pizza</option>
+            <option value="gourmet_pizza">Gourmet Pizza</option>
+            <option value="calzone">Calzone</option>
+            <option value="sub_wrap">Sub / Wrap</option>
+            <option value="appetizer">Appetizer</option>
+            <option value="dinner_plate">Dinner Plate</option>
+            <option value="salad">Salad</option>
+            <option value="dessert">Dessert</option>
+            <option value="beverage">Beverage</option>
+          </select>
+        </div>
+        <div class="edit-field">
+          <label>Description</label>
+          <input type="text" id="ni-description" placeholder="Optional" autocomplete="off" />
+        </div>
+      </div>
+      <div class="edit-section-label" style="margin-top:16px">Prices</div>
+      <div class="edit-row">
+        <div class="edit-field">
+          <label>Small / Single ($)</label>
+          <input type="number" id="ni-small" placeholder="e.g. 12.50" step="0.01" min="0" />
+        </div>
+        <div class="edit-field">
+          <label>Large ($)</label>
+          <input type="number" id="ni-large" placeholder="e.g. 16.00" step="0.01" min="0" />
+        </div>
+      </div>
+      <div class="edit-section-label" style="margin-top:16px">Photo URL</div>
+      <div class="edit-field">
+        <input type="url" id="ni-image" placeholder="https://..." autocomplete="off" />
+      </div>
+      <div class="edit-preview-wrap" id="ni-preview-wrap" style="display:none">
+        <img id="ni-preview-img" src="" alt="Preview" class="edit-preview-img" />
+      </div>
+      <div class="edit-footer">
+        <button class="btn-cancel" onclick="closeNewItem()">Cancel</button>
+        <button class="btn-save" onclick="saveNewItem()">Add Item</button>
+      </div>
+      <div class="edit-status" id="ni-status"></div>
+    </div>
+  </div>
+
+  <!-- ── Orders Panel Overlay ─────────────────────────────────── -->
+  <div id="orders-panel-overlay" style="display:none">
+
+    <header class="op-header">
+      <div class="op-header-left">
+        <span class="op-title">📋 Orders</span>
+        <div class="op-tabs">
+          <button class="orders-tab-btn active" data-tab="active" onclick="switchOrdersTab('active')">Active</button>
+          <button class="orders-tab-btn" data-tab="scheduled" onclick="switchOrdersTab('scheduled')">Scheduled</button>
+          <button class="orders-tab-btn" data-tab="history" onclick="switchOrdersTab('history')">History</button>
+        </div>
+      </div>
+      <div class="op-header-right">
+        <button class="op-refresh-btn" onclick="loadOrders()">↻ Refresh</button>
+        <button class="op-close-btn" onclick="closeOrdersPanel()">← Back to POS</button>
+      </div>
+    </header>
+
+    <div id="orders-tab-active" class="op-tab-content">
+      <div id="active-orders-board" class="op-board"></div>
+    </div>
+
+    <div id="orders-tab-scheduled" class="op-tab-content" style="display:none">
+      <div id="scheduled-orders-board" class="op-board"></div>
+    </div>
+
+    <div id="orders-tab-history" class="op-tab-content" style="display:none">
+      <div id="history-orders-board" class="op-board"></div>
+    </div>
+
+  </div>
+
+  <!-- ── Orders Payment Overlay ────────────────────────────────── -->
+  <div id="op-pay-overlay" style="display:none">
+    <div class="op-pay-modal">
+      <h3 id="op-pay-title">Collect Payment</h3>
+      <div class="op-pay-info">Order <strong>#<span id="op-pay-num"></span></strong></div>
+      <div class="op-pay-total"><span id="op-pay-amount"></span></div>
+
+      <div id="op-pay-btns-delivery" class="op-pay-buttons" style="display:none">
+        <button class="op-pay-btn cash" onclick="opMarkPaid('cash_on_delivery')">💵 Cash</button>
+        <button class="op-pay-btn card" onclick="opMarkPaid('card_on_delivery')">💳 Card</button>
+      </div>
+
+      <div id="op-pay-btns-carry" style="display:none">
+        <div class="op-pay-buttons">
+          <button class="op-pay-btn cash" onclick="opMarkPaid('cash')">💵 Cash</button>
+          <button class="op-pay-btn card" onclick="opChargeCard()">💳 Square</button>
+        </div>
+        <button class="op-pay-btn card" style="width:100%;margin-top:8px" onclick="opMarkPaid('card')">💳 Card Paid (Manual / Test)</button>
+      </div>
+
+      <button class="op-pay-cancel" onclick="document.getElementById('op-pay-overlay').style.display='none'">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ── Refund Overlay ─────────────────────────────────────────── -->
+  <div id="op-refund-overlay" style="display:none">
+    <div class="op-pay-modal">
+      <h3>Process Refund</h3>
+      <div class="op-pay-info">Order <strong>#<span id="op-refund-num"></span></strong></div>
+      <div class="op-pay-total" id="op-refund-amount"></div>
+      <p class="op-pay-info" style="font-size:0.82rem;margin-bottom:16px">How are you returning the customer's money?</p>
+      <div class="op-pay-buttons">
+        <button class="op-pay-btn cash" onclick="opProcessRefund('cash')">💵 Cash Refund</button>
+        <button class="op-pay-btn card" onclick="opProcessRefund('card')">💳 Card Refund</button>
+      </div>
+      <button class="op-pay-cancel" onclick="document.getElementById('op-refund-overlay').style.display='none'">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ── Till Panel Overlay ──────────────────────────────────────── -->
+  <div id="till-panel-overlay" style="display:none">
+    <header class="op-header">
+      <div class="op-header-left">
+        <span class="op-title">🪙 Till</span>
+      </div>
+      <div class="op-header-right">
+        <button class="op-close-btn" onclick="closeTillPanel()">← Back to POS</button>
+      </div>
+    </header>
+    <div class="op-tab-content" id="till-panel-body"></div>
+  </div>
+
+  <!-- ── Cash In Overlay ───────────────────────────────────────── -->
+  <div id="op-cashin-overlay" style="display:none">
+    <div class="op-pay-modal">
+      <h3>💵 Cash In</h3>
+      <p class="op-pay-info" style="margin-bottom:16px">Adding money to the drawer</p>
+      <div style="text-align:left;margin-bottom:12px">
+        <label class="cash-input-label">Amount ($)</label>
+        <input class="cash-input" id="cashin-amount" type="number" placeholder="0.00" step="0.01" min="0.01" />
+      </div>
+      <div style="text-align:left;margin-bottom:16px">
+        <label class="cash-input-label">Reason (optional)</label>
+        <input class="cash-input" id="cashin-notes" type="text" placeholder="e.g. Opening float" autocomplete="off" />
+      </div>
+      <button class="op-pay-btn cash" style="width:100%;margin-bottom:8px" onclick="submitCashIn()">✓ Confirm Cash In</button>
+      <button class="op-pay-cancel" onclick="document.getElementById('op-cashin-overlay').style.display='none'">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ── Cash Out Overlay ──────────────────────────────────────── -->
+  <div id="op-cashout-overlay" style="display:none">
+    <div class="op-pay-modal">
+      <h3>💸 Cash Out</h3>
+      <p class="op-pay-info" style="margin-bottom:16px">Removing money from the drawer</p>
+      <div style="text-align:left;margin-bottom:12px">
+        <label class="cash-input-label">Amount ($)</label>
+        <input class="cash-input" id="cashout-amount" type="number" placeholder="0.00" step="0.01" min="0.01" />
+      </div>
+      <div style="text-align:left;margin-bottom:16px">
+        <label class="cash-input-label">Reason</label>
+        <input class="cash-input" id="cashout-notes" type="text" placeholder="e.g. Paid supplier" autocomplete="off" />
+      </div>
+      <button class="op-pay-btn" style="width:100%;margin-bottom:8px;background:#dc2626" onclick="submitCashOut()">✓ Confirm Cash Out</button>
+      <button class="op-pay-cancel" onclick="document.getElementById('op-cashout-overlay').style.display='none'">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ── Count Till Overlay ────────────────────────────────────── -->
+  <div id="op-count-overlay" style="display:none">
+    <div class="op-pay-modal">
+      <h3>🔢 Count Till</h3>
+      <div class="op-pay-info">System expects</div>
+      <div class="op-pay-total" id="op-count-expected">$0.00</div>
+      <div style="text-align:left;margin-bottom:16px">
+        <label class="cash-input-label">Actual cash counted ($)</label>
+        <input class="cash-input" id="count-amount" type="number" placeholder="0.00" step="0.01" min="0" />
+      </div>
+      <button class="op-pay-btn" style="width:100%;margin-bottom:8px;background:#2563eb" onclick="submitTillCount()">✓ Record Count</button>
+      <button class="op-pay-cancel" onclick="document.getElementById('op-count-overlay').style.display='none'">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ── Custom Item Modal ────────────────────────────────────── -->
+  <div class="overlay" id="custom-item-overlay">
+    <div class="modal" style="max-width:320px">
+      <button class="modal-close" onclick="closeCustomItem()">✕</button>
+      <div class="modal-title">Custom Item</div>
+      <div class="modal-subtitle">Charge for an unlisted item</div>
+      <div style="margin-bottom:12px">
+        <div class="section-label">Description *</div>
+        <input class="notes-input" style="height:auto;padding:10px 12px;width:100%;box-sizing:border-box" id="ci-name" type="text" placeholder="e.g. Extra dipping sauce" autocomplete="off" />
+      </div>
+      <div style="margin-bottom:16px">
+        <div class="section-label">Price ($) *</div>
+        <input class="notes-input" style="height:auto;padding:10px 12px;width:100%;box-sizing:border-box" id="ci-price" type="number" placeholder="0.00" step="0.01" min="0.01" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeCustomItem()">Cancel</button>
+        <button class="btn-add" onclick="addCustomItemToCart()">Add to Order</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="owner.js"></script>
+  <script src="orders.js"></script>
+</body>
+</html>
