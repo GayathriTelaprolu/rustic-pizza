@@ -420,6 +420,17 @@
     </div>
   </div>
 
+  <!-- ── Receipt Print Overlay ─────────────────────────────────── -->
+  <div class="overlay" id="receipt-overlay" style="display:none">
+    <div class="modal receipt-modal">
+      <div id="receipt-content"></div>
+      <div class="receipt-actions">
+        <button class="btn-order" onclick="window.print()">🖨️ Print Receipt</button>
+        <button class="btn-order" style="background:#6b7280" onclick="closeReceipt()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Till Panel Overlay ──────────────────────────────────────── -->
   <div id="till-panel-overlay" style="display:none">
     <header class="op-header">

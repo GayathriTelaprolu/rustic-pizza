@@ -589,3 +589,42 @@ textarea.del-field { resize: none; height: 48px; }
   transition: all 0.15s;
 }
 .btn-pay-later:hover { border-color: #888; background: #eee; color: #222; }
+
+/* ── Receipt Modal ───────────────────────────────────────────── */
+.receipt-modal {
+  max-width: 340px; width: 100%;
+  padding: 0; overflow: hidden;
+}
+#receipt-content {
+  padding: 24px 24px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.r-header { text-align: center; margin-bottom: 14px; }
+.r-name { font-size: 1.2rem; font-weight: 700; letter-spacing: 1px; }
+.r-meta { font-size: 0.8rem; margin-top: 2px; }
+.r-date { font-size: 0.75rem; color: #666; margin-top: 2px; }
+.r-divider { border: none; border-top: 1px dashed #aaa; margin: 10px 0; }
+.r-item { display: flex; justify-content: space-between; gap: 8px; }
+.r-item-name { flex: 1; }
+.r-totals { margin-top: 10px; }
+.r-line { display: flex; justify-content: space-between; padding: 1px 0; }
+.r-line.r-total { font-weight: 700; font-size: 1rem; border-top: 1px solid #333; margin-top: 4px; padding-top: 4px; }
+.r-footer { text-align: center; margin-top: 14px; font-size: 0.8rem; color: #555; }
+.receipt-actions {
+  display: flex; gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid #eee;
+  background: #f9f9f9;
+}
+.receipt-actions .btn-order { flex: 1; padding: 10px; font-size: 0.9rem; }
+
+/* ── Print media — only the receipt ─────────────────────────── */
+@media print {
+  body > *                  { display: none !important; }
+  #receipt-overlay          { display: block !important; position: static !important;
+                              background: none !important; padding: 0 !important; }
+  .receipt-modal            { box-shadow: none !important; max-width: 100% !important; }
+  .receipt-actions          { display: none !important; }
+}

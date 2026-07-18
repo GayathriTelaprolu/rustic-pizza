@@ -708,14 +708,16 @@ function chargeCard() {
 }
 
 async function recordCash() {
+  const orderId = currentOrderId;
   try {
     await fetch(`${API_BASE}/api/payment/cash`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ order_id: currentOrderId, amount: currentOrderTotal, method: 'cash' }),
+      body:    JSON.stringify({ order_id: orderId, amount: currentOrderTotal, method: 'cash' }),
     });
   } catch { /* non-critical */ }
   closeConfirm();
+  showReceipt(orderId, 'Cash');
 }
 
 function recordCardPhone() {
@@ -764,8 +766,10 @@ async function processCardPhone() {
 
   btn.disabled    = false;
   btn.textContent = '💳 Process Payment';
+  const orderId = currentOrderId;
   closeCardPhone();
   closeConfirm();
+  showReceipt(orderId, `Card ••••${last4}`);
 }
 
 function cashOnDelivery() {
@@ -787,8 +791,9 @@ async function simulateCard() {
     const res = await fetch(`${API_BASE}/api/test/payment?order_id=${currentOrderId}`);
     const data = await res.json();
     if (data.ok) {
-      alert(`✅ Payment simulated!\nReceipt saved to:\nbackend/test_prints/receipt_order_${currentOrderId}.txt`);
+      const orderId = currentOrderId;
       closeConfirm();
+      showReceipt(orderId, 'Card (Test)');
     } else {
       alert(data.detail || 'Simulation failed');
       btn.disabled = false;
@@ -799,6 +804,48 @@ async function simulateCard() {
     btn.disabled = false;
     btn.textContent = '🧪 Simulate Card (Test)';
   }
+}
+
+// ── Receipt printing ──────────────────────────────────────────
+async function showReceipt(orderId, paymentMethod) {
+  try {
+    const res = await fetch(`${API_BASE}/api/orders/${orderId}`);
+    if (!res.ok) return;
+    const order = await res.json();
+    document.getElementById('receipt-content').innerHTML = buildReceiptHtml(order, paymentMethod);
+    document.getElementById('receipt-overlay').style.display = 'flex';
+  } catch { /* non-critical */ }
+}
+
+function buildReceiptHtml(order, paymentMethod) {
+  const typeLabel = { dine_in: 'Dine In', carry_out: 'Carry Out', delivery: 'Delivery' }[order.order_type] || order.order_type;
+  const date = new Date(order.created_at).toLocaleString();
+  const itemsHtml = order.items.map(item => {
+    const size = item.size ? ` (${item.size.toUpperCase()})` : '';
+    return `<div class="r-item"><span class="r-item-name">${item.quantity}x ${item.name_snapshot}${size}</span><span>$${(item.item_price / 100).toFixed(2)}</span></div>`;
+  }).join('');
+
+  return `
+    <div class="r-header">
+      <div class="r-name">RUSTIC PIZZA</div>
+      <div class="r-meta">Order #${order.id} &nbsp;·&nbsp; ${typeLabel}</div>
+      <div class="r-date">${date}</div>
+    </div>
+    <hr class="r-divider">
+    <div class="r-items">${itemsHtml}</div>
+    <hr class="r-divider">
+    <div class="r-totals">
+      <div class="r-line"><span>Subtotal</span><span>$${(order.subtotal / 100).toFixed(2)}</span></div>
+      <div class="r-line"><span>Tax</span><span>$${(order.tax / 100).toFixed(2)}</span></div>
+      <div class="r-line r-total"><span>TOTAL</span><span>$${(order.total / 100).toFixed(2)}</span></div>
+      <div class="r-line" style="margin-top:6px"><span>Payment</span><span>${paymentMethod}</span></div>
+    </div>
+    <div class="r-footer">Thank you for dining with us!</div>
+  `;
+}
+
+function closeReceipt() {
+  document.getElementById('receipt-overlay').style.display = 'none';
 }
 
 // ── Schedule helpers ──────────────────────────────────────────
