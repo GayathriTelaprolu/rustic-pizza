@@ -391,53 +391,6 @@ def process_refund(order_id: int, body: RefundIn):
     return {"ok": True, "order_id": order_id}
 
 
-@router.get("/print-queue")
-def get_print_queue():
-    """Returns orders that haven't been kitchen-printed yet (for local print agent)."""
-    with get_conn() as conn:
-        with get_cursor(conn) as cur:
-            cur.execute(
-                """
-                SELECT o.id, o.order_type, o.created_at,
-                       json_agg(json_build_object(
-                           'name_snapshot', oi.name_snapshot,
-                           'size',          oi.size,
-                           'quantity',      oi.quantity,
-                           'notes',         oi.notes,
-                           'is_half_half',  oi.is_half_half,
-                           'left_config',   oi.left_config,
-                           'right_config',  oi.right_config,
-                           'whole_config',  oi.whole_config
-                       ) ORDER BY oi.id) AS items
-                FROM orders o
-                JOIN order_items oi ON oi.order_id = o.id
-                WHERE o.kitchen_printed = FALSE
-                GROUP BY o.id
-                ORDER BY o.created_at ASC
-                """
-            )
-            orders = []
-            for row in cur.fetchall():
-                r = dict(row)
-                r["created_at"] = r["created_at"].isoformat()
-                orders.append(r)
-    return {"orders": orders}
-
-
-@router.post("/{order_id}/mark-printed")
-def mark_kitchen_printed(order_id: int):
-    """Called by the local print agent after it prints a kitchen ticket."""
-    with get_conn() as conn:
-        with get_cursor(conn) as cur:
-            cur.execute(
-                "UPDATE orders SET kitchen_printed = TRUE WHERE id = %s RETURNING id",
-                (order_id,),
-            )
-            if not cur.fetchone():
-                raise HTTPException(status_code=404, detail="Order not found")
-    return {"ok": True}
-
-
 @router.get("")
 def list_orders(status: Optional[str] = None):
     sql = """

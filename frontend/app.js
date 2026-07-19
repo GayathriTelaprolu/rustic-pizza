@@ -684,9 +684,12 @@ async function placeOrder() {
     document.getElementById('test-payment-row').style.display =
       (TEST_MODE && !isDelivery) ? 'block' : 'none';
 
+    const ticketItems = [...cart];
+    const ticketType  = orderType;
     cart = [];
     renderCart();
     clearSchedule();
+    if (!payload.scheduled_for) printKitchenTicket(data.order_id, ticketType, ticketItems);
     btn.disabled    = false;
     btn.textContent = 'Place Order';
     // Refresh badge count on orders panel button
@@ -804,6 +807,54 @@ async function simulateCard() {
     btn.disabled = false;
     btn.textContent = '🧪 Simulate Card (Test)';
   }
+}
+
+// ── Kitchen ticket printing ───────────────────────────────────
+function printKitchenTicket(orderId, type, items) {
+  const typeLabel = { dine_in: 'DINE IN', carry_out: 'CARRY OUT', delivery: 'DELIVERY' }[type] || type.toUpperCase();
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  function fmtConfig(cfg) {
+    if (!cfg) return [];
+    const lines = [];
+    if (cfg.sauce)           lines.push(`Sauce: ${cfg.sauce}`);
+    if (cfg.toppings?.length) lines.push(`Toppings: ${cfg.toppings.join(', ')}`);
+    if (cfg.cheese && cfg.cheese !== 'regular') lines.push(`Cheese: ${cfg.cheese}`);
+    return lines;
+  }
+
+  let itemsHtml = '';
+  for (const item of items) {
+    const size = item.size ? ` (${item.size.toUpperCase()})` : '';
+    itemsHtml += `<div class="kt-item"><div class="kt-name">${item.quantity}x ${item.name}${size}</div>`;
+    if (item.is_half_half) {
+      const l = fmtConfig(item.left_config);
+      const r = fmtConfig(item.right_config);
+      if (l.length) itemsHtml += `<div class="kt-mod">LEFT: ${l.join(' | ')}</div>`;
+      if (r.length) itemsHtml += `<div class="kt-mod">RIGHT: ${r.join(' | ')}</div>`;
+    } else {
+      for (const line of fmtConfig(item.whole_config)) {
+        itemsHtml += `<div class="kt-mod">${line}</div>`;
+      }
+    }
+    if (item.notes) itemsHtml += `<div class="kt-notes">** ${item.notes} **</div>`;
+    itemsHtml += `</div>`;
+  }
+
+  document.getElementById('kitchen-ticket-print').innerHTML = `
+    <div class="kt-header">
+      <div class="kt-order">ORDER #${orderId}</div>
+      <div class="kt-type">${typeLabel}</div>
+      <div class="kt-time">${time}</div>
+    </div>
+    <hr class="kt-divider">
+    ${itemsHtml}
+    <hr class="kt-divider">
+  `;
+
+  document.body.classList.add('printing-kitchen');
+  window.print();
+  document.body.classList.remove('printing-kitchen');
 }
 
 // ── Receipt printing ──────────────────────────────────────────

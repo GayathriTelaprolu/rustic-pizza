@@ -590,6 +590,18 @@ textarea.del-field { resize: none; height: 48px; }
 }
 .btn-pay-later:hover { border-color: #888; background: #eee; color: #222; }
 
+/* ── Kitchen Ticket (screen: hidden; print: full page) ──────── */
+#kitchen-ticket-print { display: none; font-family: 'Courier New', monospace; font-size: 0.9rem; }
+.kt-header   { text-align: center; margin-bottom: 8px; }
+.kt-order    { font-size: 1.5rem; font-weight: 700; }
+.kt-type     { font-size: 0.9rem; font-weight: 700; letter-spacing: 1px; margin-top: 2px; }
+.kt-time     { font-size: 0.75rem; color: #555; }
+.kt-divider  { border: none; border-top: 1px dashed #999; margin: 6px 0; }
+.kt-item     { margin-bottom: 6px; }
+.kt-name     { font-weight: 700; font-size: 1rem; }
+.kt-mod      { padding-left: 14px; font-size: 0.82rem; }
+.kt-notes    { padding-left: 14px; font-size: 0.82rem; font-style: italic; }
+
 /* ── Receipt Modal ───────────────────────────────────────────── */
 .receipt-modal {
   max-width: 340px; width: 100%;
@@ -620,11 +632,12 @@ textarea.del-field { resize: none; height: 48px; }
 }
 .receipt-actions .btn-order { flex: 1; padding: 10px; font-size: 0.9rem; }
 
-/* ── Print media — only the receipt ─────────────────────────── */
+/* ── Print media — only the active print target ──────────────── */
 @media print {
-  body > *                  { display: none !important; }
-  #receipt-overlay          { display: block !important; position: static !important;
-                              background: none !important; padding: 0 !important; }
-  .receipt-modal            { box-shadow: none !important; max-width: 100% !important; }
-  .receipt-actions          { display: none !important; }
+  body > *                        { display: none !important; }
+  #receipt-overlay                { display: block !important; position: static !important;
+                                    background: none !important; padding: 0 !important; }
+  .receipt-modal                  { box-shadow: none !important; max-width: 100% !important; }
+  .receipt-actions                { display: none !important; }
+  body.printing-kitchen #kitchen-ticket-print { display: block !important; }
 }
