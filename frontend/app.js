@@ -869,11 +869,13 @@ async function showReceipt(orderId, paymentMethod) {
 }
 
 function buildReceiptHtml(order, paymentMethod) {
+  const isRefund  = paymentMethod.toLowerCase().includes('refund');
+  const sign      = isRefund ? '-' : '';
   const typeLabel = { dine_in: 'Dine In', carry_out: 'Carry Out', delivery: 'Delivery' }[order.order_type] || order.order_type;
-  const date = new Date(order.created_at).toLocaleString();
+  const date      = new Date(order.created_at).toLocaleString();
   const itemsHtml = order.items.map(item => {
     const size = item.size ? ` (${item.size.toUpperCase()})` : '';
-    return `<div class="r-item"><span class="r-item-name">${item.quantity}x ${item.name_snapshot}${size}</span><span>$${(item.item_price / 100).toFixed(2)}</span></div>`;
+    return `<div class="r-item"><span class="r-item-name">${item.quantity}x ${item.name_snapshot}${size}</span><span>${sign}$${(item.item_price / 100).toFixed(2)}</span></div>`;
   }).join('');
 
   return `
@@ -886,12 +888,12 @@ function buildReceiptHtml(order, paymentMethod) {
     <div class="r-items">${itemsHtml}</div>
     <hr class="r-divider">
     <div class="r-totals">
-      <div class="r-line"><span>Subtotal</span><span>$${(order.subtotal / 100).toFixed(2)}</span></div>
-      <div class="r-line"><span>Tax</span><span>$${(order.tax / 100).toFixed(2)}</span></div>
-      <div class="r-line r-total"><span>TOTAL</span><span>$${(order.total / 100).toFixed(2)}</span></div>
+      <div class="r-line"><span>Subtotal</span><span>${sign}$${(order.subtotal / 100).toFixed(2)}</span></div>
+      <div class="r-line"><span>Tax</span><span>${sign}$${(order.tax / 100).toFixed(2)}</span></div>
+      <div class="r-line r-total"><span>TOTAL</span><span>${sign}$${(order.total / 100).toFixed(2)}</span></div>
       <div class="r-line" style="margin-top:6px"><span>Payment</span><span>${paymentMethod}</span></div>
     </div>
-    <div class="r-footer">Thank you for dining with us!</div>
+    <div class="r-footer">${isRefund ? 'Refund processed. Sorry for the inconvenience.' : 'Thank you for dining with us!'}</div>
   `;
 }
 
