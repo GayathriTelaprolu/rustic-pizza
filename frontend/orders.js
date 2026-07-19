@@ -372,6 +372,8 @@ async function opProcessRefund(method) {
 function _cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 
 // ── Till Management ───────────────────────────────────────────
+let _tillMovements = [];
+
 function openTillPanel() {
   document.getElementById('till-panel-overlay').style.display = 'flex';
   _loadTillPanel();
@@ -391,6 +393,7 @@ async function _loadTillPanel() {
 }
 
 function renderTillPanel(data) {
+  _tillMovements = data.movements_today || [];
   const body     = document.getElementById('till-panel-body');
   const expected = data.expected || 0;
   const fmt      = cents => `$${(cents / 100).toFixed(2)}`;
@@ -505,14 +508,40 @@ async function submitTillCount() {
   } catch { alert('Failed to record count. Please try again.'); }
 }
 
-async function printCashMovement(id) {
-  const btn = document.getElementById(`cash-print-${id}`);
-  if (btn) { btn.disabled = true; btn.textContent = '…'; }
-  try {
-    await fetch(`${API_BASE_OP}/api/cash/${id}/print`, { method: 'POST' });
-    if (btn) { btn.textContent = '✓ Sent'; }
-    setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = '🖨'; } }, 2000);
-  } catch {
-    if (btn) { btn.disabled = false; btn.textContent = '🖨'; }
+function printCashMovement(id) {
+  const mv = _tillMovements.find(m => m.id === id);
+  if (!mv) return;
+
+  const typeLabel = { cash_in: 'CASH IN', cash_out: 'CASH OUT', count: 'TILL COUNT' }[mv.type] || mv.type.toUpperCase();
+  const time = new Date(mv.created_at).toLocaleString();
+  const fmt  = c => '$' + (c / 100).toFixed(2);
+
+  let amountHtml;
+  if (mv.type === 'count') {
+    const diff    = mv.amount - (mv.expected || 0);
+    const diffClr = Math.abs(diff) <= 100 ? '#16a34a' : '#dc2626';
+    const diffStr = (diff >= 0 ? '+' : '-') + fmt(Math.abs(diff));
+    amountHtml = `
+      <div class="r-line"><span>Counted</span><span>${fmt(mv.amount)}</span></div>
+      <div class="r-line"><span>Expected</span><span>${fmt(mv.expected || 0)}</span></div>
+      <div class="r-line r-total"><span>Variance</span><span style="color:${diffClr}">${diffStr}</span></div>`;
+  } else {
+    const sign = mv.type === 'cash_out' ? '-' : '+';
+    amountHtml = `<div class="r-line r-total"><span>Amount</span><span>${sign}${fmt(mv.amount)}</span></div>`;
   }
+
+  document.getElementById('receipt-content').innerHTML = `
+    <div class="r-header">
+      <div class="r-name">RUSTIC PIZZA</div>
+      <div class="r-meta">${typeLabel}</div>
+      <div class="r-date">${time}</div>
+    </div>
+    <hr class="r-divider">
+    <div class="r-totals">
+      ${amountHtml}
+      ${mv.notes ? `<div class="r-line" style="margin-top:6px"><span>Notes</span><span style="text-align:right;max-width:55%">${mv.notes}</span></div>` : ''}
+    </div>
+    <div class="r-footer">Rustic Pizza · Till Record</div>
+  `;
+  document.getElementById('receipt-overlay').style.display = 'flex';
 }
