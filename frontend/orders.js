@@ -334,16 +334,8 @@ function _buildHistoryCard(order) {
     </div>`;
 }
 
-async function opReprint(orderId) {
-  const btn = document.getElementById(`op-reprint-${orderId}`);
-  if (btn) { btn.disabled = true; btn.textContent = '🖨 Sending…'; }
-  try {
-    await fetch(`${API_BASE_OP}/api/orders/${orderId}/reprint`, { method: 'POST' });
-    if (btn) { btn.textContent = '✓ Sent'; }
-    setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = '🖨 Reprint'; } }, 2000);
-  } catch {
-    if (btn) { btn.disabled = false; btn.textContent = '🖨 Reprint'; }
-  }
+function opReprint(orderId) {
+  showReceipt(orderId, 'Receipt');
 }
 
 function opRefund(orderId, total) {
@@ -366,6 +358,8 @@ async function opProcessRefund(method) {
       const order = historyOrders.find(o => o.id === orderId);
       if (order) order.status = 'refunded';
       renderHistoryBoard();
+      const refundLabel = method === 'cash' ? 'Cash Refund' : 'Card Refund';
+      showReceipt(orderId, refundLabel);
     } else {
       alert('Refund failed — please try again.');
     }
