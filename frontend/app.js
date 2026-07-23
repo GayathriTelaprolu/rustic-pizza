@@ -44,12 +44,16 @@ async function init() {
     return;
   }
 
-  // Category buttons
+  // Category buttons — live in the menu picker overlay
   document.querySelectorAll('.cat-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       showCategory(btn.dataset.cat);
+      closeMenuPicker();
+      // Update sidebar indicator
+      const el = document.getElementById('sidebar-cat-name');
+      if (el) el.textContent = CAT_LABELS[btn.dataset.cat] || btn.dataset.cat;
     });
   });
 
@@ -80,9 +84,12 @@ async function init() {
     this.value = digits.length > 2 ? digits.slice(0, 2) + '/' + digits.slice(2) : digits;
   });
 
-  // Default category
-  document.querySelector('.cat-btn[data-cat="pizza"]').classList.add('active');
-  showCategory('pizza');
+  // Default category — slice is now first
+  document.querySelector('.cat-btn[data-cat="slice"]').classList.add('active');
+  showCategory('slice');
+
+  // Check till assignment
+  checkTillSession();
 }
 
 // ── Category / Items ─────────────────────────────────────────
@@ -951,6 +958,246 @@ function addCustomItemToCart() {
   const price = Math.round(priceRaw * 100);
   pushToCart({ menu_item_id: null, name, size: null, price, quantity: 1, notes: '', detail: 'Custom' });
   closeCustomItem();
+}
+
+// ── Till Assignment (two-step startup: Clock In → Open Till) ─────
+async function checkTillSession() {
+  try {
+    const res  = await fetch(`${API_BASE}/api/till/today`);
+    const data = await res.json();
+    if (!data.assigned || data.closed) {
+      _showStartupOverlay();
+    }
+  } catch { /* non-blocking — if server unreachable, don't block POS */ }
+}
+
+function _showStartupOverlay() {
+  // Reset to step 1
+  document.getElementById('startup-step1').style.display = 'block';
+  document.getElementById('startup-step2').style.display = 'none';
+  document.getElementById('startup-emp-id').value = '';
+  document.getElementById('startup-clock-err').textContent = '';
+  const overlay = document.getElementById('till-assign-overlay');
+  overlay.style.display = 'flex';
+  setTimeout(() => document.getElementById('startup-emp-id').focus(), 50);
+}
+
+async function startupClockIn() {
+  const empId = document.getElementById('startup-emp-id').value.trim();
+  const errEl = document.getElementById('startup-clock-err');
+  if (!empId) { errEl.textContent = 'Enter your Employee ID'; return; }
+  errEl.textContent = '';
+  try {
+    const res  = await fetch(`${API_BASE}/api/shifts/clockin`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ employee_id: empId }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.detail || 'Clock-in failed'; return; }
+    const time = new Date(data.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('startup-clocked-banner').textContent =
+      `✅ ${data.employee_name} clocked in at ${time}`;
+    document.getElementById('startup-till-id').value = empId;
+    document.getElementById('startup-till-err').textContent = '';
+    document.getElementById('startup-step1').style.display = 'none';
+    document.getElementById('startup-step2').style.display = 'block';
+    setTimeout(() => document.getElementById('startup-till-id').focus(), 50);
+  } catch { errEl.textContent = 'Cannot reach server'; }
+}
+
+function startupSkipToTill() {
+  document.getElementById('startup-clocked-banner').textContent = 'Already clocked in — enter your Employee ID to open the till';
+  document.getElementById('startup-till-id').value = '';
+  document.getElementById('startup-till-err').textContent = '';
+  document.getElementById('startup-step1').style.display = 'none';
+  document.getElementById('startup-step2').style.display = 'block';
+  setTimeout(() => document.getElementById('startup-till-id').focus(), 50);
+}
+
+async function startupOpenTill() {
+  const empId = document.getElementById('startup-till-id').value.trim();
+  const errEl = document.getElementById('startup-till-err');
+  if (!empId) { errEl.textContent = 'Enter your Employee ID'; return; }
+  errEl.textContent = '';
+  try {
+    const res  = await fetch(`${API_BASE}/api/till/open`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ employee_id: empId }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.detail || 'Failed to open till'; return; }
+    document.getElementById('till-assign-overlay').style.display = 'none';
+    const t = document.createElement('div');
+    t.className = 'till-toast';
+    t.textContent = `Till opened by ${data.employee_name}`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  } catch { errEl.textContent = 'Cannot reach server'; }
+}
+
+// ── Menu Picker ───────────────────────────────────────────────
+function openMenuPicker() {
+  const overlay = document.getElementById('menu-picker-overlay');
+  overlay.style.display = 'flex';
+}
+
+function closeMenuPicker() {
+  document.getElementById('menu-picker-overlay').style.display = 'none';
+}
+
+// ── Clock / Shifts Panel ──────────────────────────────────────
+let _clockPanelTick = null;
+
+function openClockPanel() {
+  document.getElementById('clock-panel-overlay').style.display = 'flex';
+  loadClockPanel();
+  _clockPanelTick = setInterval(_tickClockPanel, 1000);
+  _tickClockPanel();
+}
+
+function closeClockPanel() {
+  document.getElementById('clock-panel-overlay').style.display = 'none';
+  clearInterval(_clockPanelTick);
+  _clockPanelTick = null;
+}
+
+function _tickClockPanel() {
+  const now  = new Date();
+  const el   = document.getElementById('cp-live-time');
+  const del  = document.getElementById('cp-live-date');
+  if (el)  el.textContent  = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  if (del) del.textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+async function loadClockPanel() {
+  const body = document.getElementById('clock-panel-body');
+  if (body) body.innerHTML = '<div class="op-empty">Loading…</div>';
+  try {
+    const shifts = await fetch(`${API_BASE}/api/shifts/today`).then(r => r.json());
+    renderClockPanel(shifts);
+  } catch {
+    if (body) body.innerHTML = '<div class="op-empty" style="color:#dc2626">Could not load shifts — check server connection.</div>';
+  }
+}
+
+function renderClockPanel(shifts) {
+  const body      = document.getElementById('clock-panel-body');
+  const clockedIn = shifts.filter(s => s.is_clocked_in);
+
+  const clockedInHtml = clockedIn.length
+    ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">
+        ${clockedIn.map(s => `<span class="clocked-in-chip">✅ ${s.employee_name} (${s.employee_id})</span>`).join('')}
+       </div>`
+    : '<div style="color:#64748b;font-size:0.87rem;margin-top:6px">Nobody clocked in yet today</div>';
+
+  const shiftsHtml = shifts.length
+    ? shifts.map(s => {
+        const ci   = new Date(s.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const co   = s.clock_out ? new Date(s.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+        const hrs  = s.hours_worked !== null ? `${s.hours_worked}h` : 'ongoing';
+        const dot  = s.is_clocked_in
+          ? '<span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>'
+          : '<span style="width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block"></span>';
+        return `<div class="clocked-out-chip">
+          ${dot}
+          <span style="flex:1;font-weight:600;color:#1e293b">${s.employee_name}</span>
+          <span style="color:#64748b;font-size:0.82rem">${ci} → ${co}</span>
+          <span style="color:#94a3b8;font-size:0.8rem;min-width:50px;text-align:right">${hrs}</span>
+        </div>`;
+      }).join('')
+    : '<div style="color:#94a3b8;font-size:0.85rem">No shifts recorded today</div>';
+
+  body.innerHTML = `
+    <div style="max-width:560px;margin:0 auto">
+      <div class="clock-panel-time-card">
+        <div class="clock-panel-time" id="cp-live-time">--:--:--</div>
+        <div class="clock-panel-date" id="cp-live-date">—</div>
+      </div>
+
+      <div class="cash-summary-card" style="margin-bottom:16px">
+        <div style="font-size:0.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Currently On Shift</div>
+        ${clockedInHtml}
+      </div>
+
+      <div class="cash-summary-card" style="margin-bottom:16px">
+        <div style="font-size:0.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">Clock In / Clock Out</div>
+        <input class="clock-panel-emp-input" id="cp-emp-id" type="text" placeholder="Employee ID" autocomplete="off" />
+        <div class="clock-panel-btns">
+          <button class="clock-panel-in-btn" onclick="panelClockIn()">✅ Clock In</button>
+          <button class="clock-panel-out-btn" onclick="panelClockOut()">🚪 Clock Out</button>
+        </div>
+        <div class="clock-panel-result" id="cp-result"></div>
+      </div>
+
+      <div class="cash-summary-card">
+        <div style="font-size:0.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">Today's Shifts</div>
+        ${shiftsHtml}
+      </div>
+    </div>`;
+
+  _tickClockPanel();
+}
+
+async function panelClockIn() {
+  const empId = (document.getElementById('cp-emp-id')?.value || '').trim();
+  const result = document.getElementById('cp-result');
+  if (!empId) { result.textContent = 'Enter your Employee ID'; result.className = 'clock-panel-result error'; return; }
+  try {
+    const res  = await fetch(`${API_BASE}/api/shifts/clockin`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ employee_id: empId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      const time = new Date(data.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      result.textContent = `✅ ${data.employee_name} clocked in at ${time}`;
+      result.className = 'clock-panel-result success';
+      setTimeout(loadClockPanel, 1500);
+    } else {
+      result.textContent = data.detail || 'Clock-in failed';
+      result.className = 'clock-panel-result error';
+    }
+  } catch { result.textContent = 'Cannot reach server'; result.className = 'clock-panel-result error'; }
+}
+
+async function panelClockOut() {
+  const empId = (document.getElementById('cp-emp-id')?.value || '').trim();
+  const result = document.getElementById('cp-result');
+  if (!empId) { result.textContent = 'Enter your Employee ID'; result.className = 'clock-panel-result error'; return; }
+
+  // Block clock-out if the till is currently open and assigned to this employee
+  try {
+    const tillRes = await fetch(`${API_BASE}/api/till/today`);
+    if (tillRes.ok) {
+      const session = await tillRes.json();
+      if (session.assigned && !session.closed && session.employee_id === empId) {
+        result.textContent = '⚠️ The till is assigned to you — reassign it to the closing employee before clocking out.';
+        result.className = 'clock-panel-result error';
+        return;
+      }
+    }
+  } catch { /* till check failed — let the server handle it */ }
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/shifts/clockout`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ employee_id: empId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      const time = new Date(data.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      result.textContent = `🚪 ${data.employee_name} clocked out at ${time} · ${data.hours_worked}h`;
+      result.className = 'clock-panel-result success';
+      setTimeout(loadClockPanel, 1800);
+    } else {
+      result.textContent = data.detail || 'Clock-out failed';
+      result.className = 'clock-panel-result error';
+    }
+  } catch { result.textContent = 'Cannot reach server'; result.className = 'clock-panel-result error'; }
 }
 
 // ── Start ─────────────────────────────────────────────────────

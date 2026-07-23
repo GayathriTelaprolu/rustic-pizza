@@ -1,6 +1,7 @@
 /* ── Orders Panel Overlay ──────────────────────────────────── */
 #orders-panel-overlay,
-#till-panel-overlay {
+#till-panel-overlay,
+#clock-panel-overlay {
   position: fixed;
   inset: 0;
   z-index: 800;
@@ -410,7 +411,9 @@
   cursor: pointer;
   transition: all 0.15s;
   color: #fff;
+  background: #475569;
 }
+.op-pay-btn:hover { opacity: 0.88; }
 .op-pay-btn.cash { background: #16a34a; }
 .op-pay-btn.cash:hover { background: #15803d; }
 .op-pay-btn.card { background: #2563eb; }
@@ -484,6 +487,19 @@
 .cash-action-btn.out:hover   { background: #fecaca; }
 .cash-action-btn.count { background: #dbeafe; color: #1e40af; }
 .cash-action-btn.count:hover { background: #bfdbfe; }
+.cash-action-btn.eod   { background: #ede9fe; color: #6d28d9; }
+.cash-action-btn.eod:hover   { background: #ddd6fe; }
+
+/* ── Till Status Banner ─────────────────────────────────────── */
+.till-status-banner {
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 0.88rem;
+}
+.till-ok         { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+.till-unassigned { background: #1e293b; border: 1px solid #334155; color: #e2e8f0; }
+.till-warn       { background: #fef9c3; border: 1px solid #fde047; color: #854d0e; }
 
 .cash-mv-in    { background: #dcfce7; color: #166534; }
 .cash-mv-out   { background: #fee2e2; color: #991b1b; }
@@ -518,7 +534,9 @@
 /* ── Cash action overlays ────────────────────────────────────── */
 #op-cashin-overlay,
 #op-cashout-overlay,
-#op-count-overlay {
+#op-count-overlay,
+#op-eod-overlay,
+#reassign-till-overlay {
   position: fixed;
   inset: 0;
   z-index: 860;
@@ -526,6 +544,39 @@
   display: none;
   align-items: center;
   justify-content: center;
+}
+
+/* ── Order Alarm Banner ──────────────────────────────────────── */
+.order-alarm-banner {
+  pointer-events: all;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #7c3aed;
+  color: #fff;
+  border-radius: 14px;
+  padding: 14px 18px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+  animation: alarmSlideIn 0.4s cubic-bezier(0.22,1,0.36,1);
+  width: 100%;
+  box-sizing: border-box;
+}
+.alarm-icon  { font-size: 1.6rem; flex-shrink: 0; }
+.alarm-body  { flex: 1; }
+.alarm-title { font-weight: 700; font-size: 0.95rem; }
+.alarm-sub   { font-size: 0.82rem; opacity: 0.85; margin-top: 2px; }
+.alarm-dismiss {
+  background: rgba(255,255,255,0.2);
+  border: none; color: #fff;
+  width: 30px; height: 30px;
+  border-radius: 50%; cursor: pointer;
+  font-size: 1rem; flex-shrink: 0;
+  transition: background 0.15s;
+}
+.alarm-dismiss:hover { background: rgba(255,255,255,0.35); }
+@keyframes alarmSlideIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Responsive ─────────────────────────────────────────────── */

@@ -19,28 +19,38 @@
         <span class="logo-icon">🍕</span>
         <span class="logo-text">Rustic Pizza</span>
       </div>
-      <div class="cat-list">
-        <button class="cat-btn" data-cat="pizza">Pizza</button>
-        <button class="cat-btn" data-cat="gourmet_pizza">Gourmet Pizza</button>
-        <button class="cat-btn" data-cat="calzone">Calzones</button>
-        <button class="cat-btn" data-cat="sub_wrap">Subs &amp; Wraps</button>
-        <button class="cat-btn" data-cat="appetizer">Appetizers</button>
-        <button class="cat-btn" data-cat="dinner_plate">Dinner Plates</button>
-        <button class="cat-btn" data-cat="salad">Salads</button>
-        <button class="cat-btn" data-cat="dessert">Desserts</button>
-        <button class="cat-btn" data-cat="beverage">Beverages</button>
-        <button class="cat-btn" data-cat="slice">🍕 Slices</button>
-        <button class="cat-btn" data-cat="custom">＋ Custom Item</button>
+      <div class="sidebar-nav">
+        <button class="sb-btn sb-menu" onclick="openMenuPicker()">
+          <span class="sb-icon">📦</span>
+          <span class="sb-label">Menu</span>
+        </button>
+        <button id="btn-orders-panel" class="sb-btn" onclick="openOrdersPanel()">
+          <span class="sb-icon">📋</span>
+          <span class="sb-label">Orders</span>
+          <span class="sb-badge" id="orders-badge" style="display:none"></span>
+        </button>
+        <button class="sb-btn" onclick="openTillPanel()">
+          <span class="sb-icon">🪙</span>
+          <span class="sb-label">Till</span>
+        </button>
+        <button class="sb-btn" onclick="openClockPanel()">
+          <span class="sb-icon">🕐</span>
+          <span class="sb-label">Clock</span>
+        </button>
+        <button class="sb-btn" onclick="openOwnerPanel()">
+          <span class="sb-icon">⚙️</span>
+          <span class="sb-label">Owner</span>
+        </button>
       </div>
-      <button id="btn-orders-panel" class="btn-orders-panel" onclick="openOrdersPanel()">📋 Orders</button>
-      <button class="btn-till-panel" onclick="openTillPanel()">🪙 Till</button>
-      <button class="btn-owner-panel" onclick="openOwnerPanel()">⚙ Owner</button>
+      <div class="sidebar-cat-indicator" onclick="openMenuPicker()">
+        <span id="sidebar-cat-name">Slices</span> ›
+      </div>
     </nav>
 
     <!-- Menu Items Panel -->
     <main class="menu-panel">
       <div class="panel-header">
-        <h1 id="panel-title">Pizza</h1>
+        <h1 id="panel-title">Slices</h1>
       </div>
       <div class="items-grid" id="items-grid">
         <p class="loading-msg">Loading menu…</p>
@@ -217,45 +227,81 @@
         <div class="owner-logo"><span>🍕</span><span>Rustic Pizza — Owner Panel</span></div>
         <div class="header-actions">
           <span class="item-count" id="item-count"></span>
-          <button class="btn-new-item" onclick="openNewItem()">+ New Item</button>
+          <button class="btn-new-item" id="btn-new-item-hdr" onclick="openNewItem()">+ New Item</button>
           <button class="btn-logout" onclick="logout()">← POS</button>
         </div>
       </header>
 
-      <nav class="cat-tabs" id="cat-tabs">
-        <button class="cat-tab active" data-cat="all">All</button>
-        <button class="cat-tab" data-cat="pizza">Pizza</button>
-        <button class="cat-tab" data-cat="gourmet_pizza">Gourmet</button>
-        <button class="cat-tab" data-cat="calzone">Calzones</button>
-        <button class="cat-tab" data-cat="sub_wrap">Subs &amp; Wraps</button>
-        <button class="cat-tab" data-cat="appetizer">Appetizers</button>
-        <button class="cat-tab" data-cat="dinner_plate">Dinner Plates</button>
-        <button class="cat-tab" data-cat="salad">Salads</button>
-        <button class="cat-tab" data-cat="dessert">Desserts</button>
-        <button class="cat-tab" data-cat="beverage">Beverages</button>
-      </nav>
-
-      <div class="search-bar">
-        <input type="text" id="search-input" placeholder="Search items..." oninput="filterItems()" autocomplete="off" />
+      <!-- Section switcher -->
+      <div class="owner-section-nav">
+        <button class="owner-sec-btn active" data-sec="menu"    onclick="switchOwnerSection('menu')">📦 Menu</button>
+        <button class="owner-sec-btn"         data-sec="shifts"  onclick="switchOwnerSection('shifts')">👥 Shifts</button>
+        <button class="owner-sec-btn"         data-sec="reports" onclick="switchOwnerSection('reports')">📊 Reports</button>
       </div>
 
-      <div class="items-container">
-        <div class="loading-msg" id="loading-msg">Loading menu items...</div>
-        <table class="items-table" id="items-table" style="display:none">
-          <thead>
-            <tr>
-              <th class="col-photo">Photo</th>
-              <th class="col-name">Item</th>
-              <th class="col-cat">Category</th>
-              <th class="col-price">Small</th>
-              <th class="col-price">Large</th>
-              <th class="col-status">Status</th>
-              <th class="col-actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="items-tbody"></tbody>
-        </table>
+      <!-- ── Menu section ── -->
+      <div id="owner-sec-menu">
+        <nav class="cat-tabs" id="cat-tabs">
+          <button class="cat-tab active" data-cat="all">All</button>
+          <button class="cat-tab" data-cat="slice">Slices</button>
+          <button class="cat-tab" data-cat="pizza">Pizza</button>
+          <button class="cat-tab" data-cat="gourmet_pizza">Gourmet</button>
+          <button class="cat-tab" data-cat="calzone">Calzones</button>
+          <button class="cat-tab" data-cat="sub_wrap">Subs &amp; Wraps</button>
+          <button class="cat-tab" data-cat="appetizer">Appetizers</button>
+          <button class="cat-tab" data-cat="dinner_plate">Dinner Plates</button>
+          <button class="cat-tab" data-cat="salad">Salads</button>
+          <button class="cat-tab" data-cat="dessert">Desserts</button>
+          <button class="cat-tab" data-cat="beverage">Beverages</button>
+        </nav>
+        <div class="search-bar">
+          <input type="text" id="search-input" placeholder="Search items..." oninput="filterItems()" autocomplete="off" />
+        </div>
+        <div class="items-container">
+          <div class="loading-msg" id="loading-msg">Loading menu items...</div>
+          <table class="items-table" id="items-table" style="display:none">
+            <thead>
+              <tr>
+                <th class="col-photo">Photo</th>
+                <th class="col-name">Item</th>
+                <th class="col-cat">Category</th>
+                <th class="col-price">Small</th>
+                <th class="col-price">Large</th>
+                <th class="col-status">Status</th>
+                <th class="col-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="items-tbody"></tbody>
+          </table>
+        </div>
       </div>
+
+      <!-- ── Shifts section ── -->
+      <div id="owner-sec-shifts" style="display:none">
+        <div class="owner-data-section">
+          <div class="owner-filter-row">
+            <label>From</label>
+            <input type="date" id="shifts-start" class="owner-date-input" />
+            <label>To</label>
+            <input type="date" id="shifts-end" class="owner-date-input" />
+            <button class="owner-filter-btn" onclick="loadShifts()">View Shifts</button>
+          </div>
+          <div id="shifts-result"></div>
+        </div>
+      </div>
+
+      <!-- ── Reports section ── -->
+      <div id="owner-sec-reports" style="display:none">
+        <div class="owner-data-section">
+          <div class="owner-filter-row">
+            <button class="owner-report-quick active" id="rpt-btn-today"     onclick="quickReport('today')">Today</button>
+            <button class="owner-report-quick"        id="rpt-btn-yesterday" onclick="quickReport('yesterday')">Yesterday</button>
+            <input type="date" id="report-date" class="owner-date-input" onchange="quickReport('custom')" />
+          </div>
+          <div id="report-result"></div>
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -307,6 +353,7 @@
           <label>Category *</label>
           <select id="ni-category">
             <option value="">— Select —</option>
+            <option value="slice">Slice</option>
             <option value="pizza">Pizza</option>
             <option value="gourmet_pizza">Gourmet Pizza</option>
             <option value="calzone">Calzone</option>
@@ -498,6 +545,34 @@
     </div>
   </div>
 
+  <!-- ── Count Till / End of Day Overlay ──────────────────────── -->
+  <div id="op-eod-overlay" style="display:none">
+    <div class="op-pay-modal">
+      <h3>🔢 Count Till</h3>
+      <p class="op-pay-info" style="margin-bottom:14px">Enter your Employee ID and the total cash in the drawer</p>
+      <div class="del-field-group" style="margin-bottom:10px">
+        <label class="del-info-label">Your Employee ID</label>
+        <input class="cash-input" id="eod-emp-id" type="text" placeholder="e.g. EMP001" autocomplete="off" />
+      </div>
+      <div class="del-field-group" style="margin-bottom:4px">
+        <label class="del-info-label">Total cash counted in register ($)</label>
+        <input class="cash-input" id="eod-amount" type="number" placeholder="0.00" step="0.01" min="0" oninput="updateEodPreview()" />
+      </div>
+      <div id="eod-preview" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin:12px 0 16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:0.88rem;color:#475569">
+          <span>Float (stays in drawer)</span>
+          <span style="font-weight:700;color:#1e293b">$100.00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid #e2e8f0;padding-top:8px;font-size:0.95rem">
+          <span style="color:#475569;font-weight:600">Takings to bank</span>
+          <span id="eod-takings" style="font-weight:800;color:#c8420a;font-size:1.1rem"></span>
+        </div>
+      </div>
+      <button class="op-pay-btn" style="width:100%;margin-bottom:8px;background:#7c3aed" onclick="submitEndOfDay()">✓ Count Till &amp; Print Receipt</button>
+      <button class="op-pay-cancel" onclick="document.getElementById('op-eod-overlay').style.display='none'">Cancel</button>
+    </div>
+  </div>
+
   <!-- ── Custom Item Modal ────────────────────────────────────── -->
   <div class="overlay" id="custom-item-overlay">
     <div class="modal" style="max-width:320px">
@@ -518,6 +593,89 @@
       </div>
     </div>
   </div>
+
+  <!-- ── Till Assignment Overlay (two-step: Clock In → Open Till) ── -->
+  <div id="till-assign-overlay" style="display:none; position:fixed; inset:0; z-index:1100; background:rgba(15,23,42,0.92); align-items:center; justify-content:center;">
+    <div class="till-assign-card">
+      <div class="till-assign-logo">🍕</div>
+      <h2 class="till-assign-title">Rustic Pizza</h2>
+
+      <!-- Step 1: Clock In -->
+      <div id="startup-step1">
+        <p class="till-assign-sub">Step 1 of 2 — Clock In to Start Your Shift</p>
+        <input class="till-assign-input" id="startup-emp-id" type="text" placeholder="Employee ID" autocomplete="off" />
+        <div class="till-assign-error" id="startup-clock-err"></div>
+        <button class="till-assign-btn" onclick="startupClockIn()">✅ Clock In</button>
+        <button class="till-assign-btn-alt" onclick="startupSkipToTill()">Already clocked in? Skip to Open Till →</button>
+      </div>
+
+      <!-- Step 2: Open Till (shown after clock-in succeeds) -->
+      <div id="startup-step2" style="display:none">
+        <div class="startup-clocked-banner" id="startup-clocked-banner"></div>
+        <p class="till-assign-sub" style="margin-top:14px">Step 2 of 2 — Open the Till</p>
+        <input class="till-assign-input" id="startup-till-id" type="text" placeholder="Employee ID" autocomplete="off" />
+        <div class="till-assign-error" id="startup-till-err"></div>
+        <button class="till-assign-btn" onclick="startupOpenTill()">🪙 Open Till &amp; Start</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Menu Category Picker ─────────────────────────────────── -->
+  <div id="menu-picker-overlay" style="display:none; position:fixed; inset:0; z-index:500; background:rgba(0,0,0,0.72); align-items:center; justify-content:center;">
+    <div class="menu-picker-panel">
+      <div class="menu-picker-header">
+        <span class="menu-picker-title">Select Category</span>
+        <button class="menu-picker-close" onclick="closeMenuPicker()">✕</button>
+      </div>
+      <div class="menu-picker-grid">
+        <button class="cat-btn picker-cat-btn" data-cat="slice">Slices</button>
+        <button class="cat-btn picker-cat-btn" data-cat="pizza">Pizza</button>
+        <button class="cat-btn picker-cat-btn" data-cat="gourmet_pizza">Gourmet Pizza</button>
+        <button class="cat-btn picker-cat-btn" data-cat="calzone">Calzones</button>
+        <button class="cat-btn picker-cat-btn" data-cat="sub_wrap">Subs &amp; Wraps</button>
+        <button class="cat-btn picker-cat-btn" data-cat="appetizer">Appetizers</button>
+        <button class="cat-btn picker-cat-btn" data-cat="dinner_plate">Dinner Plates</button>
+        <button class="cat-btn picker-cat-btn" data-cat="salad">Salads</button>
+        <button class="cat-btn picker-cat-btn" data-cat="dessert">Desserts</button>
+        <button class="cat-btn picker-cat-btn" data-cat="beverage">Beverages</button>
+        <button class="cat-btn picker-cat-btn" data-cat="custom">Custom Item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Clock / Shifts Panel ─────────────────────────────────── -->
+  <div id="clock-panel-overlay" style="display:none">
+    <header class="op-header">
+      <div class="op-header-left">
+        <span class="op-title">🕐 Shifts</span>
+      </div>
+      <div class="op-header-right">
+        <button class="op-close-btn" onclick="closeClockPanel()">← Back to POS</button>
+      </div>
+    </header>
+    <div class="op-tab-content" id="clock-panel-body">
+      <div class="op-empty">Loading…</div>
+    </div>
+  </div>
+
+  <!-- ── Reassign Till Overlay ──────────────────────────────────── -->
+  <div id="reassign-till-overlay" style="display:none">
+    <div class="op-pay-modal">
+      <h3>🔄 Reassign Till</h3>
+      <div class="op-pay-info" style="margin-bottom:4px">Currently assigned to: <strong id="reassign-current-name">—</strong></div>
+      <p class="op-pay-info" style="font-size:0.82rem;margin-bottom:16px">The new employee must already be clocked in for today</p>
+      <div style="text-align:left;margin-bottom:8px">
+        <label class="cash-input-label">New Employee ID</label>
+        <input class="cash-input" id="reassign-new-id" type="text" placeholder="e.g. EMP002" autocomplete="off" />
+      </div>
+      <div id="reassign-err" style="color:#dc2626;font-size:0.82rem;margin-bottom:12px"></div>
+      <button class="op-pay-btn" style="width:100%;margin-bottom:8px;background:#d97706" onclick="submitReassignTill()">✓ Reassign Till</button>
+      <button class="op-pay-cancel" onclick="document.getElementById('reassign-till-overlay').style.display='none'">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ── Order Alarm Banners ────────────────────────────────────── -->
+  <div id="alarm-container" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:1500;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;min-width:320px;max-width:90vw"></div>
 
   <script src="app.js"></script>
   <script src="owner.js"></script>

@@ -17,6 +17,10 @@ class CashMovementIn(BaseModel):
 class TillCountIn(BaseModel):
     amount_cents: int
 
+class EndOfDayIn(BaseModel):
+    amount_cents: int
+    employee_id: Optional[str] = None
+
 
 def _compute_expected(cur) -> tuple[int, Optional[dict]]:
     """Return (expected_cents, last_count_dict_or_None)."""
@@ -52,7 +56,7 @@ def _compute_expected(cur) -> tuple[int, Optional[dict]]:
                  ELSE 0 END
         ), 0) AS total
         FROM cash_movements
-        WHERE type IN ('cash_in', 'cash_out') AND created_at > %s
+        WHERE type IN ('cash_in', 'cash_out') AND created_at >= %s
         """,
         (since,),
     )
@@ -147,6 +151,64 @@ def till_count(body: TillCountIn):
             )
             row = cur.fetchone()
     return {"ok": True, "id": row["id"], "difference": body.amount_cents - expected, "expected": expected}
+
+
+@router.post("/end-of-day", status_code=201)
+def end_of_day(body: EndOfDayIn):
+    """Count till, record end-of-day takings, and close the till session."""
+    FLOAT_CENTS = 10_000  # $100.00
+    if body.amount_cents < FLOAT_CENTS:
+        raise HTTPException(status_code=400, detail="Counted amount must be at least $100.00 (the opening float)")
+    takings = body.amount_cents - FLOAT_CENTS
+    now = datetime.now(timezone.utc)
+    with get_conn() as conn:
+        with get_cursor(conn) as cur:
+            expected, _ = _compute_expected(cur)
+
+            # Look up employee name
+            employee_name = None
+            if body.employee_id:
+                cur.execute("SELECT employee_name FROM employees WHERE employee_id = %s", (body.employee_id,))
+                row = cur.fetchone()
+                if row:
+                    employee_name = row["employee_name"]
+
+            count_note = f"Count till by {body.employee_id or 'unknown'}"
+
+            cur.execute(
+                "INSERT INTO cash_movements (type, amount, expected, notes) VALUES ('count', %s, %s, %s) RETURNING id",
+                (body.amount_cents, expected, count_note),
+            )
+            count_id = cur.fetchone()["id"]
+
+            cur.execute(
+                "INSERT INTO cash_movements (type, amount, notes) VALUES ('cash_out', %s, 'End of day takings') RETURNING id",
+                (takings,),
+            )
+            cashout_id = cur.fetchone()["id"]
+
+            # Close the till session for today
+            cur.execute(
+                """
+                UPDATE till_sessions
+                SET closed_at = %s, closed_by = %s
+                WHERE opened_at::date = CURRENT_DATE AND (closed_at IS NULL OR closed_at IS NOT NULL)
+                """,
+                (now, body.employee_id),
+            )
+
+    return {
+        "ok":            True,
+        "count_id":      count_id,
+        "cashout_id":    cashout_id,
+        "takings_cents": takings,
+        "float_cents":   FLOAT_CENTS,
+        "difference":    body.amount_cents - expected,
+        "expected":      expected,
+        "employee_id":   body.employee_id,
+        "employee_name": employee_name,
+        "closed_at":     now.isoformat(),
+    }
 
 
 @router.post("/{movement_id}/print")

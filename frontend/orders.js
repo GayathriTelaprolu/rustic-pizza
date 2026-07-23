@@ -3,6 +3,9 @@ const API_BASE_OP = (location.protocol === 'file:') ? 'http://localhost:8080' : 
 let activeOrders = {};
 let scheduledOrders = [];
 let historyOrders = [];
+
+// ── Alarm state ───────────────────────────────────────────────
+const _alertedOrders = new Set();
 let opPendingPayment = { orderId: null, total: 0, orderType: null };
 let opPendingRefund  = { orderId: null, total: 0 };
 let opRefreshTimer = null;
@@ -62,8 +65,14 @@ async function _loadScheduledOrders() {
 
 function _updateOrdersBadge() {
   const total = Object.keys(activeOrders).length + scheduledOrders.length;
-  const btn = document.getElementById('btn-orders-panel');
-  if (btn) btn.textContent = total > 0 ? `📋 Orders (${total})` : '📋 Orders';
+  const badge = document.getElementById('orders-badge');
+  if (!badge) return;
+  if (total > 0) {
+    badge.textContent = total;
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+  }
 }
 
 // ── Active board ──────────────────────────────────────────────
@@ -210,12 +219,36 @@ function _buildScheduledCard(order) {
 }
 
 async function startScheduledOrder(orderId) {
+  // Capture order data now — it leaves scheduledOrders after start
+  const order = scheduledOrders.find(o => o.id === orderId);
+
+  // Pre-mark alarm so it never fires for an already-started order
+  _alertedOrders.add(orderId);
+  dismissAlarm(orderId);
+
   const btn = document.getElementById(`op-start-${orderId}`);
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
 
   try {
     const res = await fetch(`${API_BASE_OP}/api/orders/${orderId}/start`, { method: 'POST' });
     if (res.ok) {
+      // Print kitchen ticket (frontend browser print)
+      if (order && typeof printKitchenTicket === 'function') {
+        const rawItems  = order.items || [];
+        const kitchenItems = rawItems.length
+          ? rawItems.map(item => ({
+              name:         item.name_snapshot || item.name || '(item)',
+              size:         item.size         || null,
+              quantity:     item.quantity      || 1,
+              is_half_half: item.is_half_half  || false,
+              left_config:  item.left_config   || null,
+              right_config: item.right_config  || null,
+              whole_config: item.whole_config  || null,
+              notes:        item.notes         || '',
+            }))
+          : [{ name: 'See order #' + orderId, size: null, quantity: 1, is_half_half: false, left_config: null, right_config: null, whole_config: null, notes: '' }];
+        printKitchenTicket(orderId, order.order_type, kitchenItems);
+      }
       await loadOrders();
       switchOrdersTab('active');
     } else {
@@ -373,6 +406,7 @@ function _cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 
 // ── Till Management ───────────────────────────────────────────
 let _tillMovements = [];
+let _currentTillData = null;
 
 function openTillPanel() {
   document.getElementById('till-panel-overlay').style.display = 'flex';
@@ -387,17 +421,61 @@ async function _loadTillPanel() {
   const body = document.getElementById('till-panel-body');
   if (body) body.innerHTML = '<div class="op-empty">Loading…</div>';
   try {
-    const data = await fetch(`${API_BASE_OP}/api/cash/summary`).then(r => r.json());
-    renderTillPanel(data);
-  } catch (e) { console.error('Failed to load till', e); }
+    const [cashData, tillData] = await Promise.all([
+      fetch(`${API_BASE_OP}/api/cash/summary`).then(r => r.json()),
+      fetch(`${API_BASE_OP}/api/till/today`).then(r => r.json()).catch(() => null),
+    ]);
+    renderTillPanel(cashData, tillData);
+  } catch (e) {
+    const b = document.getElementById('till-panel-body');
+    if (b) b.innerHTML = '<div class="op-empty" style="color:#dc2626">Could not load till data — make sure the server is running and Supabase tables exist.</div>';
+  }
 }
 
-function renderTillPanel(data) {
-  _tillMovements = data.movements_today || [];
-  const body     = document.getElementById('till-panel-body');
-  const expected = data.expected || 0;
+function renderTillPanel(data, tillData) {
+  _tillMovements  = data.movements_today || [];
+  _currentTillData = tillData;
+  const body      = document.getElementById('till-panel-body');
+  const isClosed = tillData && tillData.closed;
+  const expected = isClosed ? 10000 : (data.expected || 0);
   const fmt      = cents => `$${(cents / 100).toFixed(2)}`;
 
+  // Till session status banner
+  let tillBanner = '';
+  if (!tillData) {
+    tillBanner = `
+      <div class="till-status-banner till-warn">
+        ⚠️ Could not check till session — ensure Supabase tables exist
+      </div>`;
+  } else if (tillData.assigned && tillData.closed) {
+    const closedAt = new Date(tillData.closed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    tillBanner = `
+      <div class="till-status-banner" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0">
+        <div style="margin-bottom:10px">🔒 Till closed by <strong>${tillData.closed_by_name || tillData.closed_by}</strong> at ${closedAt}</div>
+        <div style="font-size:0.82rem;margin-bottom:10px;opacity:0.85">To continue taking orders, open the till again:</div>
+        <input class="cash-input" id="till-panel-emp-id" type="text" placeholder="Employee ID" style="margin-bottom:8px" />
+        <div id="till-panel-err" style="color:#fca5a5;font-size:0.8rem;margin-bottom:6px"></div>
+        <button class="op-pay-btn" style="width:100%;padding:12px;background:#f97316" onclick="openTillFromPanel()">🪙 Open Till</button>
+      </div>`;
+  } else if (tillData.assigned) {
+    const openedAt = new Date(tillData.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    tillBanner = `
+      <div class="till-status-banner till-ok" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span>✅ Till opened by <strong>${tillData.employee_name}</strong> at ${openedAt}</span>
+        <button class="op-btn-reprint" style="padding:6px 14px;font-size:0.82rem;background:#fef3c7;color:#92400e;border:1px solid #d97706" onclick="openReassignTill()">🔄 Reassign Till</button>
+      </div>`;
+  } else {
+    tillBanner = `
+      <div class="till-status-banner till-unassigned">
+        <div style="font-weight:700;margin-bottom:10px">⚠️ Till not assigned for today</div>
+        <div style="font-size:0.82rem;margin-bottom:10px;opacity:0.85">Enter Employee ID to open the till:</div>
+        <input class="cash-input" id="till-panel-emp-id" type="text" placeholder="Employee ID" style="margin-bottom:8px" />
+        <div id="till-panel-err" style="color:#fca5a5;font-size:0.8rem;margin-bottom:6px"></div>
+        <button class="op-pay-btn" style="width:100%;padding:12px;background:#f97316" onclick="openTillFromPanel()">🪙 Open Till</button>
+      </div>`;
+  }
+
+  // Last count
   let lastCountHtml = '<div class="cash-last-count" style="margin-bottom:16px">No till count recorded yet</div>';
   if (data.last_count) {
     const lc      = data.last_count;
@@ -412,6 +490,7 @@ function renderTillPanel(data) {
       </div>`;
   }
 
+  // Movements log
   const mvHtml = data.movements_today.length
     ? data.movements_today.map(mv => {
         const mvTime  = new Date(mv.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -427,17 +506,22 @@ function renderTillPanel(data) {
             <span style="flex:1;font-size:0.875rem;color:#334155">${mv.notes || '—'}</span>
             <span style="font-weight:700;color:#1e293b;font-size:0.875rem">${amtTxt}</span>
             <span class="op-time">${mvTime}</span>
-            <button class="op-btn-reprint" id="cash-print-${mv.id}" onclick="printCashMovement(${mv.id})" style="padding:4px 10px;font-size:0.75rem">🖨</button>
+            <button class="op-btn-reprint" onclick="printCashMovement(${mv.id})" style="padding:4px 10px;font-size:0.75rem">🖨</button>
           </div>`;
       }).join('')
     : '<div style="color:#94a3b8;font-size:0.85rem;padding-top:8px">No movements in the last 24 hours</div>';
 
   body.innerHTML = `
-    ${lastCountHtml}
+    ${tillBanner}
+    <div class="cash-summary-card">
+      <div class="cash-expected-label">Expected in drawer</div>
+      <div class="cash-expected-amount">${fmt(expected)}</div>
+      ${lastCountHtml}
+    </div>
     <div class="cash-actions">
-      <button class="cash-action-btn in"    onclick="openCashIn()">💵 Cash In</button>
-      <button class="cash-action-btn out"   onclick="openCashOut()">💸 Cash Out</button>
-      <button class="cash-action-btn count" onclick="openCountTill(${expected})">🔢 Count Till</button>
+      <button class="cash-action-btn in"  onclick="openCashIn()">💵 Cash In</button>
+      <button class="cash-action-btn out" onclick="openCashOut()">💸 Cash Out</button>
+      <button class="cash-action-btn eod" onclick="openEndOfDay()">🔢 Count Till</button>
     </div>
     <div style="background:#fff;border-radius:12px;padding:16px 20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
       <div style="font-size:0.78rem;font-weight:700;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em">Today's Movements</div>
@@ -508,6 +592,135 @@ async function submitTillCount() {
   } catch { alert('Failed to record count. Please try again.'); }
 }
 
+// Open till directly from the Till panel (when startup overlay didn't fire)
+async function openTillFromPanel() {
+  const empId = (document.getElementById('till-panel-emp-id')?.value || '').trim();
+  const errEl = document.getElementById('till-panel-err');
+  if (!empId) { if (errEl) errEl.textContent = 'Enter your Employee ID'; return; }
+  if (errEl) errEl.textContent = '';
+  try {
+    const res = await fetch(`${API_BASE_OP}/api/till/open`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ employee_id: empId }),
+    });
+    const d = await res.json();
+    if (!res.ok) { if (errEl) errEl.textContent = d.detail || 'Failed to open till'; return; }
+    await _loadTillPanel();
+  } catch { if (errEl) errEl.textContent = 'Server error — try again'; }
+}
+
+// Count Till (End of Day)
+function openEndOfDay() {
+  document.getElementById('eod-emp-id').value = '';
+  document.getElementById('eod-amount').value = '';
+  document.getElementById('eod-preview').style.display = 'none';
+  document.getElementById('op-eod-overlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('eod-emp-id').focus(), 50);
+}
+
+function updateEodPreview() {
+  const val = parseFloat(document.getElementById('eod-amount').value);
+  const preview   = document.getElementById('eod-preview');
+  const takingsEl = document.getElementById('eod-takings');
+  if (isNaN(val) || val < 0) { preview.style.display = 'none'; return; }
+  const takings = Math.max(0, Math.round(val * 100) - 10000);
+  takingsEl.textContent = `$${(takings / 100).toFixed(2)}`;
+  preview.style.display = 'block';
+}
+
+async function submitEndOfDay() {
+  const empId = document.getElementById('eod-emp-id').value.trim();
+  const val   = parseFloat(document.getElementById('eod-amount').value);
+  if (!empId)                          { alert('Enter your Employee ID'); return; }
+  if (isNaN(val) || val < 0)          { alert('Enter the total cash counted in the register'); return; }
+  const amount_cents = Math.round(val * 100);
+  if (amount_cents < 10000)           { alert('Amount must be at least $100.00 — that is the float staying in the drawer'); return; }
+
+  try {
+    const res = await fetch(`${API_BASE_OP}/api/cash/end-of-day`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ amount_cents, employee_id: empId }),
+    });
+    const d = await res.json();
+    if (!res.ok) { alert(d.detail || 'Failed to record till count'); return; }
+
+    document.getElementById('op-eod-overlay').style.display = 'none';
+    await _loadTillPanel();
+
+    // Build and print receipt
+    const fmt      = c => `$${(c / 100).toFixed(2)}`;
+    const now      = new Date(d.closed_at || Date.now()).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const diff     = d.difference;
+    const diffSign = diff >= 0 ? '+' : '';
+    const diffClr  = Math.abs(diff) <= 100 ? '#16a34a' : '#dc2626';
+    const empLine  = d.employee_name ? `${empId} — ${d.employee_name}` : empId;
+
+    document.getElementById('receipt-content').innerHTML = `
+      <div class="r-header">
+        <div class="r-name">RUSTIC PIZZA</div>
+        <div class="r-meta" style="font-size:1rem;font-weight:700;letter-spacing:0.06em">TILL COUNT</div>
+        <div class="r-date">${now}</div>
+      </div>
+      <hr class="r-divider">
+      <div style="text-align:center;font-size:0.82rem;color:#475569;margin-bottom:10px">
+        Counted by: <strong>${empLine}</strong>
+      </div>
+      <hr class="r-divider">
+      <div class="r-totals">
+        <div class="r-line"><span>Total Counted</span><span>${fmt(amount_cents)}</span></div>
+        <div class="r-line"><span>Float in Drawer</span><span>${fmt(d.float_cents)}</span></div>
+        <div class="r-line r-total"><span>Takings to Bank</span><span style="color:#c8420a">${fmt(d.takings_cents)}</span></div>
+        <div class="r-line" style="margin-top:8px">
+          <span style="color:#64748b">System Expected</span>
+          <span style="color:#64748b">${fmt(d.expected)}</span>
+        </div>
+        <div class="r-line">
+          <span style="color:#64748b">Variance</span>
+          <span style="color:${diffClr};font-weight:700">${diffSign}${fmt(Math.abs(diff))}</span>
+        </div>
+      </div>
+      <hr class="r-divider">
+      <div class="r-footer">Till closed for today · Rustic Pizza</div>
+    `;
+    document.getElementById('receipt-overlay').style.display = 'flex';
+  } catch { alert('Failed to record till count. Please try again.'); }
+}
+
+// ── Till Reassignment ─────────────────────────────────────────
+function openReassignTill() {
+  const name = _currentTillData?.employee_name || '—';
+  document.getElementById('reassign-current-name').textContent = name;
+  document.getElementById('reassign-new-id').value = '';
+  document.getElementById('reassign-err').textContent = '';
+  document.getElementById('reassign-till-overlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('reassign-new-id').focus(), 50);
+}
+
+async function submitReassignTill() {
+  const newId = (document.getElementById('reassign-new-id')?.value || '').trim();
+  const errEl = document.getElementById('reassign-err');
+  if (!newId) { errEl.textContent = 'Enter the new employee\'s ID'; return; }
+  errEl.textContent = '';
+  try {
+    const res = await fetch(`${API_BASE_OP}/api/till/reassign`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ to_employee_id: newId }),
+    });
+    const d = await res.json();
+    if (!res.ok) { errEl.textContent = d.detail || 'Reassignment failed'; return; }
+    document.getElementById('reassign-till-overlay').style.display = 'none';
+    await _loadTillPanel();
+    const t = document.createElement('div');
+    t.className = 'till-toast';
+    t.textContent = `Till reassigned to ${d.employee_name}`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  } catch { errEl.textContent = 'Server error — please try again'; }
+}
+
 function printCashMovement(id) {
   const mv = _tillMovements.find(m => m.id === id);
   if (!mv) return;
@@ -545,3 +758,108 @@ function printCashMovement(id) {
   `;
   document.getElementById('receipt-overlay').style.display = 'flex';
 }
+
+// ── 30-minute Order Alarm ─────────────────────────────────────
+// Single shared AudioContext — must be unlocked by a user gesture first
+let _audioCtx = null;
+
+function _ensureAudioCtx() {
+  if (!_audioCtx) {
+    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch { }
+  }
+  return _audioCtx;
+}
+
+// Unlock audio on any user interaction — call this once per click anywhere
+function _unlockAudio() {
+  const ctx = _ensureAudioCtx();
+  if (ctx && ctx.state === 'suspended') ctx.resume();
+}
+
+function _doBeep(ctx) {
+  const beats = [880, 1100, 880, 1100, 880];
+  beats.forEach((freq, i) => {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    const t = ctx.currentTime + i * 0.22;
+    gain.gain.setValueAtTime(0.15, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    osc.start(t);
+    osc.stop(t + 0.18);
+  });
+}
+
+function _playAlarmBeep() {
+  try {
+    const ctx = _ensureAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => _doBeep(ctx)).catch(() => {});
+    } else {
+      _doBeep(ctx);
+    }
+  } catch { }
+}
+
+function _showAlarmBanner(order, minsLabel) {
+  const container = document.getElementById('alarm-container');
+  if (!container) return;
+  const existing = document.getElementById(`alarm-${order.id}`);
+  if (existing) return; // already showing
+
+  const typeLabel = { carry_out: 'Pickup', delivery: 'Delivery', dine_in: 'Dine In' }[order.order_type] || order.order_type;
+  const customerPart = order.customer_name ? ` · ${order.customer_name}` : '';
+
+  const banner = document.createElement('div');
+  banner.className = 'order-alarm-banner';
+  banner.id = `alarm-${order.id}`;
+  banner.innerHTML = `
+    <span class="alarm-icon">⏰</span>
+    <div class="alarm-body">
+      <div class="alarm-title">#${order.id} ${typeLabel}${customerPart}</div>
+      <div class="alarm-sub">${minsLabel} — start preparing now</div>
+    </div>
+    <button class="alarm-dismiss" onclick="dismissAlarm(${order.id})" title="Dismiss">✕</button>
+  `;
+  container.appendChild(banner);
+  setTimeout(() => dismissAlarm(order.id), 5 * 60 * 1000);
+}
+
+function dismissAlarm(orderId) {
+  const el = document.getElementById(`alarm-${orderId}`);
+  if (el) el.remove();
+}
+
+async function _checkUpcomingOrders() {
+  let orders;
+  try {
+    orders = await fetch(`${API_BASE_OP}/api/orders/scheduled`).then(r => r.json());
+    scheduledOrders = orders;
+    renderScheduledBoard();
+  } catch { return; }
+
+  const now = Date.now();
+  orders.forEach(o => {
+    if (_alertedOrders.has(o.id)) return;
+    const minsUntil = (new Date(o.scheduled_for).getTime() - now) / 60000;
+    if (minsUntil <= 30 && minsUntil >= -5) {
+      _alertedOrders.add(o.id);
+      const minsLabel = minsUntil <= 0
+        ? 'Due now!'
+        : `Due in ~${Math.round(minsUntil)} min`;
+      _playAlarmBeep();
+      _showAlarmBanner(o, minsLabel);
+    }
+  });
+}
+
+// Start alarm checker when page loads; unlock audio on first user gesture
+document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('click', _unlockAudio, { once: false });
+  _checkUpcomingOrders();
+  setInterval(_checkUpcomingOrders, 30 * 1000);
+});

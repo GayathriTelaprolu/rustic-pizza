@@ -4,7 +4,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from routes import menu, orders, payments, owner, test, cash
+from routes import menu, orders, payments, owner, test, cash, shifts, reports, till
 from websocket import kitchen_manager
 
 app = FastAPI(title="Rustic Pizza POS", version="1.0.0")
@@ -22,6 +22,9 @@ app.include_router(payments.router)
 app.include_router(owner.router)
 app.include_router(test.router)
 app.include_router(cash.router)
+app.include_router(shifts.router)
+app.include_router(reports.router)
+app.include_router(till.router)
 
 
 @app.get("/health")

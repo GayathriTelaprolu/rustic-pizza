@@ -1,9 +1,10 @@
 const API = (location.protocol === 'file:') ? 'http://localhost:8080' : location.origin;
 
-let sessionPin = '';
-let allItems   = [];
-let currentCat = 'all';
-let editingId  = null;
+let sessionPin    = '';
+let allItems      = [];
+let currentCat    = 'all';
+let editingId     = null;
+let ownerSection  = 'menu';
 
 // ── PIN Entry ─────────────────────────────────────────────────
 
@@ -153,11 +154,167 @@ function renderTable() {
   tbody.innerHTML = rows.map(item => buildRow(item)).join('');
 }
 
+// ── Owner Section Switcher ────────────────────────────────────
+
+function switchOwnerSection(sec) {
+  ownerSection = sec;
+  document.querySelectorAll('.owner-sec-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.sec === sec);
+  });
+  document.getElementById('owner-sec-menu').style.display    = sec === 'menu'    ? 'block' : 'none';
+  document.getElementById('owner-sec-shifts').style.display  = sec === 'shifts'  ? 'block' : 'none';
+  document.getElementById('owner-sec-reports').style.display = sec === 'reports' ? 'block' : 'none';
+  document.getElementById('btn-new-item-hdr').style.display  = sec === 'menu'    ? ''      : 'none';
+  document.getElementById('item-count').style.display        = sec === 'menu'    ? ''      : 'none';
+
+  if (sec === 'shifts') {
+    // Default dates: today
+    const today = new Date().toISOString().slice(0, 10);
+    if (!document.getElementById('shifts-start').value) document.getElementById('shifts-start').value = today;
+    if (!document.getElementById('shifts-end').value)   document.getElementById('shifts-end').value   = today;
+    loadShifts();
+  }
+  if (sec === 'reports') {
+    quickReport('today');
+  }
+}
+
+// ── Shifts ────────────────────────────────────────────────────
+
+async function loadShifts() {
+  const start = document.getElementById('shifts-start').value;
+  const end   = document.getElementById('shifts-end').value;
+  if (!start || !end) { alert('Please select start and end dates'); return; }
+  const el = document.getElementById('shifts-result');
+  el.innerHTML = '<div style="padding:20px;color:#64748b">Loading…</div>';
+  try {
+    const r = await fetch(`${API}/api/shifts?start=${start}&end=${end}`);
+    if (!r.ok) { el.innerHTML = `<div style="padding:20px;color:#ef4444">Error ${r.status} — check that the Supabase tables exist and restart the server.</div>`; return; }
+    const data = await r.json();
+    renderShifts(data);
+  } catch { el.innerHTML = '<div style="padding:20px;color:#ef4444">Cannot reach server — make sure uvicorn is running.</div>'; }
+}
+
+function renderShifts(shifts, start, end) {
+  const res = document.getElementById('shifts-result');
+  if (!shifts.length) {
+    res.innerHTML = '<div style="padding:20px;color:#64748b">No shifts found for this date range.</div>';
+    return;
+  }
+  const rows = shifts.map(s => {
+    const ci    = new Date(s.clock_in).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    const co    = s.clock_out ? new Date(s.clock_out).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '<em style="color:#f59e0b">Still clocked in</em>';
+    const hours = s.hours_worked != null ? `${s.hours_worked}h` : '—';
+    return `<tr>
+      <td>${s.employee_id}</td>
+      <td>${s.employee_name}</td>
+      <td>${ci}</td>
+      <td>${co}</td>
+      <td style="font-weight:700">${hours}</td>
+    </tr>`;
+  }).join('');
+
+  res.innerHTML = `
+    <table class="owner-data-table">
+      <thead><tr>
+        <th>Employee ID</th><th>Name</th><th>Clock In</th><th>Clock Out</th><th>Hours</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ── Reports ───────────────────────────────────────────────────
+
+function quickReport(mode) {
+  document.querySelectorAll('.owner-report-quick').forEach(b => b.classList.remove('active'));
+  let dateStr;
+  const today = new Date();
+  if (mode === 'today') {
+    dateStr = today.toISOString().slice(0, 10);
+    document.getElementById('rpt-btn-today').classList.add('active');
+    document.getElementById('report-date').value = dateStr;
+  } else if (mode === 'yesterday') {
+    const y = new Date(today); y.setDate(y.getDate() - 1);
+    dateStr = y.toISOString().slice(0, 10);
+    document.getElementById('rpt-btn-yesterday').classList.add('active');
+    document.getElementById('report-date').value = dateStr;
+  } else {
+    dateStr = document.getElementById('report-date').value;
+    if (!dateStr) return;
+  }
+  loadReport(dateStr);
+}
+
+async function loadReport(dateStr) {
+  const el = document.getElementById('report-result');
+  el.innerHTML = '<div style="padding:20px;color:#64748b">Loading…</div>';
+  try {
+    const r = await fetch(`${API}/api/reports?date=${dateStr}`);
+    if (!r.ok) { el.innerHTML = `<div style="padding:20px;color:#ef4444">Error ${r.status} — check that the server is running.</div>`; return; }
+    const data = await r.json();
+    renderReport(data);
+  } catch { el.innerHTML = '<div style="padding:20px;color:#ef4444">Cannot reach server — make sure uvicorn is running.</div>'; }
+}
+
+function renderReport(d) {
+  const fmt  = c => c != null ? `$${(c / 100).toFixed(2)}` : '$0.00';
+  const cnt  = c => c != null ? c : 0;
+  const res  = document.getElementById('report-result');
+
+  const dt = d.by_type || {};
+  const typeRows = ['dine_in','carry_out','delivery'].map(t => {
+    const info = dt[t] || {};
+    const label = { dine_in:'Dine In', carry_out:'Carry Out', delivery:'Delivery' }[t];
+    return `<tr><td>${label}</td><td>${cnt(info.count)}</td><td>${fmt(info.total)}</td></tr>`;
+  }).join('');
+
+  const bm = d.by_method || {};
+  const cash   = bm['cash']   || {};
+  const card   = bm['card']   || {};
+  const methodRows = `
+    <tr><td>Cash</td><td>${cnt(cash.count)}</td><td>${fmt(cash.total)}</td></tr>
+    <tr><td>Card</td><td>${cnt(card.count)}</td><td>${fmt(card.total)}</td></tr>`;
+
+  const cm = d.cash_movements || {};
+  const ci = cm['cash_in']  || {};
+  const co = cm['cash_out'] || {};
+
+  const rf = d.refunds || {};
+
+  const dtLabel = new Date(d.date + 'T12:00:00').toLocaleDateString([], { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+
+  res.innerHTML = `
+    <div class="report-card">
+      <div class="report-card-title">📅 ${dtLabel}</div>
+
+      <div class="report-section-label">Overall</div>
+      <div class="report-row"><span>Total Orders</span><span>${cnt(d.totals?.order_count)}</span></div>
+      <div class="report-row report-bold"><span>Gross Revenue</span><span>${fmt(d.totals?.gross_total)}</span></div>
+      <div class="report-row" style="color:#dc2626"><span>Refunds (${cnt(rf.count)})</span><span>-${fmt(rf.total)}</span></div>
+      <div class="report-row report-bold" style="border-top:1px solid #e2e8f0;padding-top:6px;margin-top:4px">
+        <span>Net Revenue</span><span>${fmt((d.totals?.gross_total || 0) - (rf.total || 0))}</span>
+      </div>
+
+      <div class="report-section-label" style="margin-top:16px">By Order Type</div>
+      <table class="report-mini-table"><thead><tr><th>Type</th><th>Orders</th><th>Total</th></tr></thead>
+        <tbody>${typeRows}</tbody></table>
+
+      <div class="report-section-label" style="margin-top:16px">By Payment Method</div>
+      <table class="report-mini-table"><thead><tr><th>Method</th><th>Count</th><th>Total</th></tr></thead>
+        <tbody>${methodRows}</tbody></table>
+
+      <div class="report-section-label" style="margin-top:16px">Cash Drawer</div>
+      <div class="report-row"><span>Cash In (${cnt(ci.count)} movements)</span><span style="color:#16a34a">+${fmt(ci.total)}</span></div>
+      <div class="report-row"><span>Cash Out (${cnt(co.count)} movements)</span><span style="color:#dc2626">-${fmt(co.total)}</span></div>
+    </div>`;
+}
+
+// ── Category label map (add slice) ────────────────────────────
 function buildRow(item) {
   const small = item.price_small != null ? `$${(item.price_small / 100).toFixed(2)}` : '—';
   const large = item.price_large != null ? `$${(item.price_large / 100).toFixed(2)}` : '—';
   const catLabel = {
-    pizza: 'Pizza', gourmet_pizza: 'Gourmet', calzone: 'Calzone',
+    slice: 'Slice', pizza: 'Pizza', gourmet_pizza: 'Gourmet', calzone: 'Calzone',
     sub_wrap: 'Sub/Wrap', appetizer: 'Appetizer', dinner_plate: 'Dinner Plate',
     salad: 'Salad', dessert: 'Dessert', beverage: 'Beverage',
   }[item.category] || item.category;

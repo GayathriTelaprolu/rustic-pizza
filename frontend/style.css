@@ -58,6 +58,126 @@ body {
   display: block;
 }
 
+/* ── Sidebar Nav Buttons ─────────────────────────────────────── */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 2px;
+  padding: 8px 6px;
+  flex: 1;
+  width: 100%;
+}
+
+.sb-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: #aaa;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+}
+.sb-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.sb-btn.sb-menu { background: rgba(200,66,10,0.15); color: #f97316; }
+.sb-btn.sb-menu:hover { background: rgba(200,66,10,0.28); color: #fb923c; }
+.sb-icon  { font-size: 1.25rem; line-height: 1; flex-shrink: 0; width: 22px; text-align: center; }
+.sb-label { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.01em; flex: 1; }
+.sb-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 9px;
+  margin-left: auto;
+}
+
+.sidebar-cat-indicator {
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  color: #666;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer;
+  text-align: center;
+  transition: color 0.15s;
+}
+.sidebar-cat-indicator:hover { color: #ccc; }
+#sidebar-cat-name { color: #f97316; font-weight: 700; }
+
+/* ── Menu Category Picker Overlay ────────────────────────────── */
+.menu-picker-panel {
+  background: #1e293b;
+  border-radius: 16px;
+  width: 540px;
+  max-width: 92vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+}
+.menu-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.menu-picker-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: 0.03em;
+}
+.menu-picker-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.menu-picker-close:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.menu-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 16px;
+}
+.picker-cat-btn {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-left-color: transparent !important;
+  border-radius: 10px !important;
+  color: #cbd5e1 !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  padding: 16px 10px !important;
+  text-align: center !important;
+  width: 100% !important;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.picker-cat-btn:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
+.picker-cat-btn.active {
+  background: rgba(200,66,10,0.25) !important;
+  border-color: var(--accent) !important;
+  color: #fb923c !important;
+}
+
+/* Keep legacy cat-btn for any edge cases */
 .cat-list { padding: 6px 0; flex: 1; overflow-y: auto; min-height: 0; }
 
 .btn-owner-panel {
@@ -633,12 +753,256 @@ textarea.del-field { resize: none; height: 48px; }
 }
 .receipt-actions .btn-order { flex: 1; padding: 10px; font-size: 0.9rem; }
 
+/* legacy clock button — replaced by sb-btn */
+
+/* ── Till Assignment Overlay ─────────────────────────────────── */
+.till-assign-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 40px 36px;
+  width: 380px;
+  max-width: 92vw;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.till-assign-logo  { font-size: 3rem; margin-bottom: 10px; }
+.till-assign-title { font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 6px; }
+.till-assign-sub   { font-size: 0.9rem; color: #64748b; margin-bottom: 24px; line-height: 1.5; }
+.till-assign-input {
+  width: 100%; padding: 13px 16px;
+  border: 2px solid #e2e8f0; border-radius: 10px;
+  font-size: 1rem; margin-bottom: 10px;
+  outline: none; text-align: center; letter-spacing: 0.1em;
+}
+.till-assign-input:focus { border-color: #c8420a; }
+.till-assign-error { color: #dc2626; font-size: 0.85rem; min-height: 20px; margin-bottom: 8px; }
+.till-assign-btn {
+  width: 100%; padding: 14px;
+  background: #c8420a; color: #fff;
+  border: none; border-radius: 10px;
+  font-size: 1rem; font-weight: 700; cursor: pointer;
+  transition: background 0.15s;
+}
+.till-assign-btn:hover { background: #a83508; }
+.till-toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: #1e293b; color: #fff;
+  padding: 12px 24px; border-radius: 8px;
+  font-size: 0.9rem; z-index: 1200;
+  animation: fadeInUp 0.3s ease;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Clock In / Out Modal ────────────────────────────────────── */
+.clock-modal {
+  background: #1e293b;
+  border-radius: 20px;
+  padding: 32px 28px 24px;
+  width: 360px;
+  max-width: 92vw;
+  position: relative;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+.clock-modal .modal-close {
+  position: absolute; top: 14px; right: 16px;
+  background: rgba(255,255,255,0.08); border: none;
+  color: #94a3b8; border-radius: 50%; width: 30px; height: 30px;
+  font-size: 1rem; cursor: pointer;
+}
+.clock-live { text-align: center; margin-bottom: 24px; }
+.clock-live-time {
+  font-size: 2.6rem; font-weight: 700; color: #f1f5f9;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+}
+.clock-live-date { font-size: 0.85rem; color: #64748b; margin-top: 2px; }
+.clock-id-label {
+  display: block; font-size: 0.78rem; font-weight: 700;
+  color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.clock-id-input {
+  width: 100%; padding: 12px 16px;
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  border-radius: 10px; color: #f1f5f9;
+  font-size: 1rem; outline: none;
+  margin-bottom: 18px;
+}
+.clock-id-input:focus { border-color: #f97316; }
+.clock-id-input::placeholder { color: #475569; }
+.clock-action-row { display: flex; gap: 10px; margin-bottom: 14px; }
+.clock-in-btn, .clock-out-btn {
+  flex: 1; padding: 16px 8px;
+  border: none; border-radius: 12px;
+  cursor: pointer; transition: opacity 0.15s;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.clock-in-btn  { background: #14532d; color: #4ade80; }
+.clock-out-btn { background: #450a0a; color: #f87171; }
+.clock-in-btn:hover  { opacity: 0.82; }
+.clock-out-btn:hover { opacity: 0.82; }
+.clock-btn-icon  { font-size: 1.5rem; }
+.clock-btn-label { font-size: 0.82rem; font-weight: 700; }
+.clock-result { font-size: 0.87rem; padding: 10px 14px; border-radius: 8px; min-height: 20px; }
+.clock-result.success { background: rgba(20,83,45,0.4); color: #4ade80; }
+.clock-result.error   { background: rgba(69,10,10,0.4);  color: #f87171; }
+
+/* ── Startup Two-Step Overlay ────────────────────────────────── */
+.till-assign-btn-alt {
+  display: block; width: 100%; margin-top: 10px; padding: 10px;
+  background: none; border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px; color: #94a3b8;
+  font-size: 0.82rem; font-weight: 500; cursor: pointer;
+  text-align: center; transition: all 0.15s;
+}
+.till-assign-btn-alt:hover { color: #f97316; border-color: #f97316; }
+.startup-clocked-banner {
+  padding: 10px 16px; border-radius: 10px;
+  background: rgba(20,83,45,0.4); color: #4ade80;
+  font-size: 0.9rem; font-weight: 600; text-align: center;
+}
+
+/* ── Clock Panel (full-screen, inside op-tab-content) ────────── */
+.clock-panel-time-card {
+  background: #1e293b; border-radius: 14px;
+  padding: 24px 20px; text-align: center; margin-bottom: 16px;
+}
+.clock-panel-time {
+  font-size: 2.8rem; font-weight: 700; color: #f1f5f9;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+}
+.clock-panel-date { font-size: 0.9rem; color: #64748b; margin-top: 4px; }
+.clock-panel-emp-input {
+  width: 100%; padding: 11px 14px; box-sizing: border-box;
+  background: #f8fafc; border: 1.5px solid #e2e8f0;
+  border-radius: 10px; font-size: 0.97rem; outline: none;
+  margin-bottom: 10px; transition: border-color 0.15s;
+}
+.clock-panel-emp-input:focus { border-color: #f97316; }
+.clock-panel-btns { display: flex; gap: 10px; }
+.clock-panel-in-btn, .clock-panel-out-btn {
+  flex: 1; padding: 12px 8px; border: none; border-radius: 10px;
+  font-size: 0.88rem; font-weight: 700; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.clock-panel-in-btn  { background: #dcfce7; color: #15803d; }
+.clock-panel-out-btn { background: #fee2e2; color: #991b1b; }
+.clock-panel-in-btn:hover  { opacity: 0.82; }
+.clock-panel-out-btn:hover { opacity: 0.82; }
+.clock-panel-result {
+  font-size: 0.85rem; padding: 8px 12px; border-radius: 8px;
+  margin-top: 8px; min-height: 18px;
+}
+.clock-panel-result.success { background: #dcfce7; color: #15803d; }
+.clock-panel-result.error   { background: #fee2e2; color: #991b1b; }
+.clocked-in-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #dcfce7; color: #15803d;
+  padding: 5px 12px; border-radius: 20px;
+  font-size: 0.82rem; font-weight: 600; margin: 3px 3px;
+}
+.clocked-out-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid #f1f5f9;
+  font-size: 0.85rem; color: #64748b;
+}
+
+/* ── Owner Panel Section Nav ─────────────────────────────────── */
+.owner-section-nav {
+  display: flex; gap: 4px; padding: 10px 20px 0;
+  background: #fff; border-bottom: 1px solid #e2e8f0;
+}
+.owner-sec-btn {
+  padding: 8px 20px; border: none; border-radius: 8px 8px 0 0;
+  background: #f1f5f9; color: #64748b;
+  font-size: 0.88rem; font-weight: 600; cursor: pointer;
+  transition: all 0.15s;
+}
+.owner-sec-btn.active { background: #fff; color: #c8420a; border-bottom: 2px solid #c8420a; }
+.owner-sec-btn:hover:not(.active) { background: #e2e8f0; color: #334155; }
+
+/* ── Owner Shifts & Reports shared layout ────────────────────── */
+.owner-data-section { padding: 24px 24px; max-width: 900px; }
+.owner-filter-row {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap; margin-bottom: 20px;
+}
+.owner-filter-row label { font-size: 0.85rem; font-weight: 600; color: #475569; }
+.owner-date-input {
+  padding: 8px 12px; border: 1.5px solid #e2e8f0;
+  border-radius: 8px; font-size: 0.88rem; outline: none;
+}
+.owner-date-input:focus { border-color: #c8420a; }
+.owner-filter-btn {
+  padding: 8px 18px; background: #c8420a; color: #fff;
+  border: none; border-radius: 8px; font-size: 0.88rem;
+  font-weight: 700; cursor: pointer;
+}
+.owner-filter-btn:hover { background: #a83508; }
+
+/* ── Shifts Table ────────────────────────────────────────────── */
+.owner-data-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 0.88rem; background: #fff;
+  border-radius: 10px; overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+}
+.owner-data-table th {
+  background: #f8fafc; color: #64748b;
+  padding: 10px 14px; text-align: left;
+  font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em;
+  border-bottom: 1px solid #e2e8f0;
+}
+.owner-data-table td {
+  padding: 11px 14px; border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+}
+.owner-data-table tr:last-child td { border-bottom: none; }
+
+/* ── Report Card ─────────────────────────────────────────────── */
+.owner-report-quick {
+  padding: 8px 18px; border: 1.5px solid #e2e8f0;
+  border-radius: 8px; background: #f8fafc; color: #475569;
+  font-size: 0.88rem; font-weight: 600; cursor: pointer;
+}
+.owner-report-quick.active { background: #c8420a; color: #fff; border-color: #c8420a; }
+.report-card {
+  background: #fff; border-radius: 12px; padding: 24px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08); max-width: 520px;
+}
+.report-card-title { font-size: 1.05rem; font-weight: 800; color: #1e293b; margin-bottom: 16px; }
+.report-section-label {
+  font-size: 0.75rem; font-weight: 700; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;
+}
+.report-row {
+  display: flex; justify-content: space-between;
+  font-size: 0.9rem; color: #334155; padding: 4px 0;
+}
+.report-bold { font-weight: 700; color: #1e293b; }
+.report-mini-table {
+  width: 100%; border-collapse: collapse; font-size: 0.87rem;
+}
+.report-mini-table th {
+  text-align: left; color: #94a3b8; font-size: 0.75rem;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 4px 8px 6px 0; border-bottom: 1px solid #e2e8f0;
+}
+.report-mini-table td { padding: 6px 8px 6px 0; color: #334155; border-bottom: 1px solid #f8fafc; }
+
 /* ── Print media — only the active print target ──────────────── */
 @media print {
-  body > *                        { display: none !important; }
-  #receipt-overlay                { display: block !important; position: static !important;
-                                    background: none !important; padding: 0 !important; }
-  .receipt-modal                  { box-shadow: none !important; max-width: 100% !important; }
-  .receipt-actions                { display: none !important; }
-  body.printing-kitchen #kitchen-ticket-print { display: block !important; }
+  body > *  { display: none !important; }
+
+  /* Receipt print (no kitchen class on body) */
+  body:not(.printing-kitchen) #receipt-overlay  { display: block !important; position: static !important;
+                                                   background: none !important; padding: 0 !important; }
+  body:not(.printing-kitchen) .receipt-modal    { box-shadow: none !important; max-width: 100% !important; }
+  body:not(.printing-kitchen) .receipt-actions  { display: none !important; }
+
+  /* Kitchen ticket print (body has .printing-kitchen) */
+  body.printing-kitchen #kitchen-ticket-print   { display: block !important; }
 }

@@ -15,7 +15,7 @@ def get_menu():
                        is_gourmet_preset, image_url
                 FROM menu_items
                 WHERE is_active = TRUE
-                ORDER BY category, id
+                ORDER BY category, name
             """)
             rows = cur.fetchall()
 
